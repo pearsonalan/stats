@@ -4,7 +4,7 @@
 #define _STATS_H_INCLUDED_
 
 #include "shared_mem.h"
-#include "semaphore.h"
+#include "lock.h"
 
 /* stats_header is the first 16 bytes of the stats shared memory
  *
@@ -48,13 +48,14 @@ struct stats_data
 /* the in-memory stats object */
 struct stats
 {
-    struct shared_memory *shmem;
-    struct semaphore *sem;
+    struct shared_memory shmem;
+    struct lock lock;
     struct stats_data *data;
 };
 
 
 int stats_create(struct stats **stats_out);
+int stats_open(struct stats *stats);
 
 int stats_allocate_counter(struct stats *stats, char *name, int *key_out);
 int stats_remove_counter(struct stats *stats, int key);

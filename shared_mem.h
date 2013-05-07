@@ -28,6 +28,7 @@ struct shared_memory {
 };
 
 int shared_memory_create(const char *name, int flags, int size, struct shared_memory **shmem_out);
+int shared_memory_init(struct shared_memory *shmem, const char *name, int flags, int size);
 int shared_memory_open(struct shared_memory *shmem);
 int shared_memory_close(struct shared_memory *shmem);
 void shared_memory_free(struct shared_memory *shmem);

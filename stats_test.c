@@ -5,8 +5,6 @@
 #include <unistd.h>
 #include "error.h"
 #include "stats.h"
-#include "shared_mem.h"
-#include "semaphore.h"
 #include <libkern/OSAtomic.h>
 
 #define DPRINTF if (DEBUG) printf

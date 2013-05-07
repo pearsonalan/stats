@@ -26,6 +26,7 @@ int lock_create(const char * name, struct lock **lock_out)
     else
     {
         free(lock);
+        *lock_out = NULL;
     }
 
     return err;

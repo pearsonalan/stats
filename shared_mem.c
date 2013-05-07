@@ -12,16 +12,36 @@
 int shared_memory_create(const char *name, int flags, int size, struct shared_memory **shmem_out )
 {
     struct shared_memory * shmem;
+    int err;
 
     if (shmem_out == NULL)
         return ERROR_INVALID_PARAMETERS;
 
-    if (strlen(name) >= SHARED_MEMORY_MAX_NAME_LEN)
-        return ERROR_SHARED_MEM_NAME_TOO_LONG;
-
     shmem = malloc(sizeof(struct shared_memory));
     if (!shmem)
-        return 0;
+        return ERROR_MEMORY;
+
+    err = shared_memory_init(shmem,name,flags,size);
+    if (err == S_OK)
+    {
+        *shmem_out = shmem;
+    }
+    else
+    {
+        free(shmem);
+        *shmem_out = NULL;
+    }
+
+    return err;
+}
+
+int shared_memory_init(struct shared_memory *shmem, const char *name, int flags, int size)
+{
+    if (shmem == NULL)
+        return ERROR_INVALID_PARAMETERS;
+
+    if (strlen(name) >= SHARED_MEMORY_MAX_NAME_LEN)
+        return ERROR_SHARED_MEM_NAME_TOO_LONG;
 
     memset(shmem, 0, sizeof(struct shared_memory));
 
@@ -31,11 +51,8 @@ int shared_memory_create(const char *name, int flags, int size, struct shared_me
     shmem->size = size;
     strcpy(shmem->name, name);
 
-    *shmem_out = shmem;
-
     return S_OK;
 }
-
 
 int shared_memory_open(struct shared_memory * shmem)
 {

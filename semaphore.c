@@ -35,6 +35,7 @@ int semaphore_create(const char *name, unsigned short size, struct semaphore **s
     else
     {
         free(sem);
+        *sem_out = NULL;
     }
 
     return err;
@@ -43,6 +44,12 @@ int semaphore_create(const char *name, unsigned short size, struct semaphore **s
 
 int semaphore_init(struct semaphore *sem, const char *name, unsigned short size)
 {
+    if (sem == NULL)
+        return ERROR_INVALID_PARAMETERS;
+
+    if (strlen(name) >= SEMAPHORE_MAX_NAME_LEN)
+        return ERROR_SEMAPHORE_NAME_TOO_LONG;
+
     memset(sem, 0, sizeof(struct semaphore));
 
     sem->magic = SEMAPHORE_MAGIC;

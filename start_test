@@ -1,0 +1,8 @@
+#!/bin/sh
+
+bin/shmem_test write &
+bin/shmem_test write &
+bin/shmem_test write &
+
+bin/shmem_test read &
+bin/shmem_test read

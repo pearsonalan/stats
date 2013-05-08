@@ -7,7 +7,7 @@
 #include "error.h"
 #include "stats.h"
 
-int stats_create(struct stats **stats_out)
+int stats_create(const char *name, struct stats **stats_out)
 {
     struct stats * stats = NULL;
     int err = S_OK;
@@ -21,11 +21,11 @@ int stats_create(struct stats **stats_out)
 
     stats->data = NULL;
 
-    err = lock_init(&stats->lock, "stats");
+    err = lock_init(&stats->lock, name);
     if (err != S_OK)
         goto fail;
 
-    err = shared_memory_init(&stats->shmem, "stats", OMODE_OPEN_OR_CREATE, sizeof(struct stats_data));
+    err = shared_memory_init(&stats->shmem, name, OMODE_OPEN_OR_CREATE | DESTROY_ON_CLOSE_IF_LAST, sizeof(struct stats_data));
     if (err != S_OK)
         goto fail;
 
@@ -47,6 +47,26 @@ ok:
 
 int stats_open(struct stats *stats)
 {
+    int err;
+
+    err = lock_open(&stats->lock);
+    if (err == S_OK)
+    {
+        err = shared_memory_open(&stats->shmem);
+    }
+    return err;
+}
+
+int stats_close(struct stats *stats)
+{
+    lock_close(&stats->lock);
+    shared_memory_close(&stats->shmem);
+    return S_OK;
+}
+
+int stats_free(struct stats *stats)
+{
+    free(stats);
     return S_OK;
 }
 

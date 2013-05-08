@@ -205,6 +205,7 @@ int shared_memory_close(struct shared_memory *shmem)
 
         if (destroy)
         {
+            printf("Destroying shared memory %s 0x%08x (%d).\n", shmem->name, shmem->shmkey, shmem->shmid);
             shmctl(shmem->shmid, IPC_RMID, NULL);
             sprintf(path, "%s/%s", SHARED_MEMORY_DIRECTORY, shmem->name);
             unlink(path);

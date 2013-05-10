@@ -34,9 +34,9 @@ void semaphore_free(struct semaphore *sem);
 #define semaphore_signal semaphore_V
 #define semaphore_wait semaphore_P
 
-#define semaphore_size(s) (s->size)
-#define semaphore_name(s) (s->name)
-
+#define semaphore_size(s) ((s)->size)
+#define semaphore_name(s) ((s)->name)
+#define semaphore_is_open(s) ((s)->semid != -1)
 #define SEMAPHORE_DIRECTORY "/tmp"
 #define MAX_PATH 255
 

@@ -46,6 +46,7 @@ int shared_memory_init(struct shared_memory *shmem, const char *name, int flags,
     memset(shmem, 0, sizeof(struct shared_memory));
 
     shmem->magic = SHARED_MEMORY_MAGIC;
+    shmem->shmkey = -1;
     shmem->shmid = -1;
     shmem->flags = flags;
     shmem->size = size;
@@ -186,6 +187,7 @@ int shared_memory_close(struct shared_memory *shmem)
     if (shmem->ptr)
     {
         shmdt(shmem->ptr);
+        shmem->ptr = NULL;
     }
 
     if (shmem->shmid != -1)
@@ -210,7 +212,11 @@ int shared_memory_close(struct shared_memory *shmem)
             sprintf(path, "%s/%s", SHARED_MEMORY_DIRECTORY, shmem->name);
             unlink(path);
         }
+
+        shmem->shmid = -1;
     }
+
+    shmem->shmkey = -1;
 
     return S_OK;
 }

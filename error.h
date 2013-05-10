@@ -13,6 +13,7 @@
 #define ERROR_FACILITY_SHARED_MEM    0x00020000
 #define ERROR_FACILITY_SEMAPHORE     0x00030000
 
+#define ERROR_FAIL                                      (ERROR_FLAG | ERROR_FACILITY_GENERAL    | 0x0000)
 #define ERROR_INVALID_PARAMETERS                        (ERROR_FLAG | ERROR_FACILITY_GENERAL    | 0x0001)
 #define ERROR_MEMORY                                    (ERROR_FLAG | ERROR_FACILITY_GENERAL    | 0x0002)
 

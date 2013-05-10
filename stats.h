@@ -6,6 +6,8 @@
 #include "shared_mem.h"
 #include "lock.h"
 
+#define STATS_MAGIC   'stat'
+
 /* stats_header is the first 16 bytes of the stats shared memory
  *
  * The stats_header should be aligned to a 16-byte boundary to
@@ -56,8 +58,6 @@ struct stats_data
  *
  * the in-memory stats object
  */
-
-#define STATS_MAGIC   'stat'
 
 struct stats
 {

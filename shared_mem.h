@@ -34,10 +34,11 @@ int shared_memory_close(struct shared_memory *shmem);
 void shared_memory_free(struct shared_memory *shmem);
 int shared_memory_nattach(struct shared_memory *shmem, int *attach_count_out);
 
-#define shared_memory_size(s) (s->size)
-#define shared_memory_ptr(s) (s->ptr)
-#define shared_memory_name(s) (s->name)
-#define shared_memory_was_created(s) (s->created)
+#define shared_memory_size(s) ((s)->size)
+#define shared_memory_ptr(s) ((s)->ptr)
+#define shared_memory_name(s) ((s)->name)
+#define shared_memory_was_created(s) ((s)->created)
+#define shared_memory_is_open(s) ((s)->shmid != -1 && (s)->ptr != NULL)
 
 #define SHARED_MEMORY_DIRECTORY "/tmp"
 #define MAX_PATH 255

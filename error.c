@@ -8,6 +8,7 @@ const char * error_message(int code)
     {
     case S_OK:                                      return "S_OK";
 
+    case ERROR_FAIL:                                return "ERRROR_FAIL";
     case ERROR_INVALID_PARAMETERS:                  return "ERROR_INVALID_PARAMETERS";
     case ERROR_MEMORY:                              return "ERROR_MEMORY";
 

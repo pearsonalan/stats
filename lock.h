@@ -19,4 +19,6 @@ int lock_release(struct lock *lock);
 int lock_close(struct lock *lock);
 void lock_free(struct lock *lock);
 
+#define lock_is_open(lock) semaphore_is_open(&((lock)->sem))
+
 #endif

@@ -53,6 +53,7 @@ int semaphore_init(struct semaphore *sem, const char *name, unsigned short size)
     memset(sem, 0, sizeof(struct semaphore));
 
     sem->magic = SEMAPHORE_MAGIC;
+    sem->semkey = -1;
     sem->semid = -1;
     sem->size = size;
     strcpy(sem->name, name);
@@ -253,6 +254,9 @@ int semaphore_V(struct semaphore *sem, unsigned short nsem)
 
 int semaphore_close(struct semaphore *sem)
 {
+    sem->semid = -1;
+    sem->semkey = -1;
+
     return S_OK;
 }
 

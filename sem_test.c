@@ -2,16 +2,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 #include <unistd.h>
+#include <errno.h>
+#include <time.h>
+#include <sys/wait.h>
+
 #include "error.h"
 #include "stats.h"
 #include "semaphore.h"
-#include <errno.h>
-#include <libkern/OSAtomic.h>
 
-#define DPRINTF if (DEBUG) printf
+#define DPRINTF  if (DEBUG) printf
 #define NWORKERS 2
 #define NTESTS   20
 

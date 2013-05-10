@@ -63,6 +63,9 @@ bin:
 obj/%.o: %.c
 	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
+obj/%.o: tools/%.c
+	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
+
 obj/test/%.o: test/%.c
 	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 

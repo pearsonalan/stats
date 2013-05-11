@@ -1,17 +1,30 @@
 OSTYPE = $(shell uname -s)
 DEBUG = 1
 
-$(info OSTYPE = $(OSTYPE))
+# $(info OSTYPE = $(OSTYPE))
 
-all: obj bin bin/shmem_test bin/sem_test bin/lock_test bin/find_prime bin/stats_test
+OBJDIR =          obj
+BINDIR =          bin
+
+STATSLIB =        $(OBJDIR)/libstats.a
+
+LIB_OBJS =        $(OBJDIR)/stats.o $(OBJDIR)/shared_mem.o $(OBJDIR)/semaphore.o $(OBJDIR)/lock.o $(OBJDIR)/error.o $(OBJDIR)/hash.o
+STATS_TEST_OBJS = $(OBJDIR)/stats_test.o
+SHMEM_TEST_OBJS = $(OBJDIR)/shmem_test.o
+SEM_TEST_OBJS =   $(OBJDIR)/sem_test.o
+LOCK_TEST_OBJS =  $(OBJDIR)/lock_test.o
+
+TESTS =           $(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/find_prime $(BINDIR)/stats_test
+
+all: $(OBJDIR) $(BINDIR) $(STATSLIB) $(TESTS)
 
 clean:
-	-rm obj/*.o bin/shmem_test bin/sem_test bin/lock_test bin/find_prime bin/stats_test
-	-rmdir obj
-	-rmdir bin
+	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS)
+	-rmdir $(OBJDIR)
+	-rmdir $(BINDIR)
 
-INCLUDES=.
-INCLUDEFLAGS=$(foreach dir,$(INCLUDES),-I$(dir))
+INCLUDES=include ext
+INCLUDEFLAGS=$(foreach dir,$(INCLUDES),-I $(dir))
 
 ifeq ($(DEBUG),1)
 CFLAGS = -DDEBUG=1 -Wall -g
@@ -31,49 +44,52 @@ ifeq ($(OSTYPE),Linux)
   CFLAGS += -DLINUX -Wno-multichar
 endif
 
-STATS_TEST_OBJS = obj/stats_test.o obj/stats.o obj/shared_mem.o obj/semaphore.o obj/lock.o obj/error.o obj/hash.o
-SHMEM_TEST_OBJS = obj/shmem_test.o obj/shared_mem.o obj/semaphore.o obj/error.o
-SEM_TEST_OBJS =   obj/sem_test.o obj/semaphore.o obj/error.o
-LOCK_TEST_OBJS =  obj/lock_test.o obj/semaphore.o obj/lock.o obj/error.o
+LIBFLAGS =        -Lobj -lstats
 
-bin/shmem_test: $(SHMEM_TEST_OBJS)
-	$(CC) $(LINKFLAGS) -o $@ $(SHMEM_TEST_OBJS)
+$(STATSLIB): $(LIB_OBJS)
+	ar -r $@ $(LIB_OBJS)
 
-bin/stats_test: $(STATS_TEST_OBJS)
-	$(CC) $(LINKFLAGS) -o $@ $(STATS_TEST_OBJS)
+$(BINDIR)/shmem_test: $(SHMEM_TEST_OBJS) $(STATSLIB)
+	$(CC) $(LINKFLAGS) -o $@ $(SHMEM_TEST_OBJS) $(LIBFLAGS)
 
-bin/sem_test: $(SEM_TEST_OBJS)
-	$(CC) $(LINKFLAGS) -o $@ $(SEM_TEST_OBJS)
+$(BINDIR)/stats_test: $(STATS_TEST_OBJS) $(STATSLIB)
+	$(CC) $(LINKFLAGS) -o $@ $(STATS_TEST_OBJS) $(LIBFLAGS)
 
-bin/lock_test: $(LOCK_TEST_OBJS)
-	$(CC) $(LINKFLAGS) -o $@ $(LOCK_TEST_OBJS)
+$(BINDIR)/sem_test: $(SEM_TEST_OBJS) $(STATSLIB)
+	$(CC) $(LINKFLAGS) -o $@ $(SEM_TEST_OBJS) $(LIBFLAGS)
 
-bin/find_prime: obj/find_prime.o
-	$(CC) $(LINKFLAGS) -o $@ obj/find_prime.o
+$(BINDIR)/lock_test: $(LOCK_TEST_OBJS) $(STATSLIB)
+	$(CC) $(LINKFLAGS) -o $@ $(LOCK_TEST_OBJS) $(LIBFLAGS)
 
-obj:
-	mkdir obj
+$(BINDIR)/find_prime: $(OBJDIR)/find_prime.o
+	$(CC) $(LINKFLAGS) -o $@ $(OBJDIR)/find_prime.o $(LIBFLAGS)
 
-bin:
-	mkdir bin
+$(OBJDIR):
+	mkdir $(OBJDIR)
 
-obj/%.o: %.c
+$(BINDIR):
+	mkdir $(BINDIR)
+
+$(OBJDIR)/%.o: src/%.c
 	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
-obj/%.o: tools/%.c
+$(OBJDIR)/%.o: ext/%.c
 	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
-obj/%.o: test/%.c
+$(OBJDIR)/%.o: tools/%.c
+	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
+
+$(OBJDIR)/%.o: test/%.c
 	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
 
-obj/lock.o: error.h semaphore.h omode.h lock.h
-obj/stats.o: error.h stats.h shared_mem.h semaphore.h lock.h omode.h
-obj/shared_mem.o: error.h shared_mem.h omode.h
-obj/semaphore.o: error.h semaphore.h omode.h
+$(OBJDIR)/lock.o: include/error.h include/semaphore.h include/omode.h include/lock.h
+$(OBJDIR)/stats.o: include/error.h include/stats.h include/shared_mem.h include/semaphore.h include/lock.h include/omode.h
+$(OBJDIR)/shared_mem.o: include/error.h include/shared_mem.h include/omode.h
+$(OBJDIR)/semaphore.o: include/error.h include/semaphore.h include/omode.h
 
-obj/shmem_test.o: error.h shared_mem.h omode.h
-obj/stats_test.o: error.h shared_mem.h omode.h semaphore.h lock.h stats.h
-obj/sem_test.o: error.h semaphore.h omode.h
-obj/lock_test.o: error.h semaphore.h lock.h omode.h
+$(OBJDIR)/shmem_test.o: include/error.h include/shared_mem.h include/omode.h
+$(OBJDIR)/stats_test.o: include/error.h include/shared_mem.h include/omode.h include/semaphore.h include/lock.h include/stats.h
+$(OBJDIR)/sem_test.o: include/error.h include/semaphore.h include/omode.h
+$(OBJDIR)/lock_test.o: include/error.h include/semaphore.h include/lock.h include/omode.h
 

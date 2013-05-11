@@ -26,14 +26,22 @@ struct stats_header
  * alignment. The current definition is 48 bytes.
  */
 
-#define COUNTER_NAME_LENGTH 32
+#define MAX_COUNTER_KEY_LENGTH 28
+
+#define ALLOCATION_STATUS_FREE        0
+#define ALLOCATION_STATUS_CLAIMED    -1   /* not used right now */
+#define ALLOCATION_STATUS_ALLOCATED   1
 
 struct stats_counter
 {
     int ctr_allocation_status;
     int ctr_flags;
-    long long ctr_value;
-    char ctr_name[COUNTER_NAME_LENGTH];
+    union {
+        long long val64;
+        long      val32;
+    } ctr_value;
+    int ctr_key_len;
+    char ctr_key[MAX_COUNTER_KEY_LENGTH];
 };
 
 
@@ -67,13 +75,17 @@ struct stats
     struct stats_data *data;
 };
 
-
 int stats_create(const char *name, struct stats **stats_out);
 int stats_open(struct stats *stats);
 int stats_close(struct stats *stats);
 int stats_free(struct stats *stats);
 
-int stats_allocate_counter(struct stats *stats, char *name, int *key_out);
-int stats_remove_counter(struct stats *stats, int key);
+int stats_allocate_counter(struct stats *stats, const char *name, struct stats_counter **ctr_out);
+int stats_get_counters(struct stats *stats, struct stats_counter **counters, int counter_size, int *counter_out, int *sequence_number_out);
+
+void counter_get_key(struct stats_counter *ctr, char *buf, int buflen);
+void counter_increment(struct stats_counter *ctr);
+
+#define stats_get_sequence_number(s) ((s)->data->hdr.stats_sequence_number)
 
 #endif

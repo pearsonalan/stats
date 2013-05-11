@@ -28,7 +28,7 @@ int semaphore_set_value(struct semaphore *sem, unsigned short nsem, unsigned sho
 int semaphore_set_values(struct semaphore *sem, unsigned short *values);
 int semaphore_P(struct semaphore *sem, unsigned short nsem);
 int semaphore_V(struct semaphore *sem, unsigned short nsem);
-int semaphore_close(struct semaphore *sem);
+int semaphore_close(struct semaphore *sem, int remove);
 void semaphore_free(struct semaphore *sem);
 
 #define semaphore_signal semaphore_V

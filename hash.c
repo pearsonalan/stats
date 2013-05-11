@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include "hash.h"
 
 #undef get16bits

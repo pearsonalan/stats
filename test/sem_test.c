@@ -63,7 +63,7 @@ int run_test(int pidx)
 
     if (sem != NULL)
     {
-        semaphore_close(sem);
+        semaphore_close(sem,0);
         semaphore_free(sem);
     }
 

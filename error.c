@@ -34,6 +34,8 @@ const char * error_message(int code)
     case ERROR_SEMAPHORE_INVALID_SIZE:              return "ERROR_SEMAPHORE_INVALID_SIZE";
     case ERROR_SEMAPHORE_CANNOT_OPEN:               return "ERROR_SEMAPHORE_CANNOT_OPEN";
 
+    case ERROR_STATS_CANNOT_ALLOCATE_COUNTER:       return "ERROR_STATS_CANNOT_ALLOCATE_COUNTER";
+    case ERROR_STATS_KEY_TOO_LONG:                  return "ERROR_STATS_KEY_TOO_LONG";
 
     }
     return "UNKNOWN_ERROR";

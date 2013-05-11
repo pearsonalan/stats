@@ -10,8 +10,6 @@ struct lock {
 };
 
 int lock_create(const char * name, struct lock **lock_out);
-int lock_init(struct lock *lock, const char * name);
-int lock_open(struct lock *lock);
 
 int lock_acquire(struct lock *lock);
 int lock_release(struct lock *lock);
@@ -19,6 +17,11 @@ int lock_release(struct lock *lock);
 int lock_close(struct lock *lock);
 void lock_free(struct lock *lock);
 
+#define lock_init(lock,name) semaphore_init(&(lock)->sem,name,1)
+#define lock_open(lock) semaphore_open_and_set(&(lock)->sem,1)
+#define lock_acquire(lock) semaphore_P(&(lock)->sem,0)
+#define lock_release(lock) semaphore_V(&(lock)->sem,0)
+#define lock_close(lock,remove) semaphore_close(&(lock)->sem,(remove));
 #define lock_is_open(lock) semaphore_is_open(&((lock)->sem))
 
 #endif

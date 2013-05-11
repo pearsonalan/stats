@@ -11,6 +11,7 @@
 
 #include "error.h"
 #include "semaphore.h"
+#include "debug.h"
 
 int semaphore_create(const char *name, unsigned short size, struct semaphore **sem_out )
 {
@@ -118,7 +119,7 @@ int semaphore_open(struct semaphore * sem, int flags)
         break;
     }
 
-    printf("Opening semaphore key %08x for %s (absolute path: %s), mode 0%o, size %d\n", sem->semkey, sem->name, path, mode, sem->size);
+    DPRINTF("Opening semaphore key %08x for %s (absolute path: %s), mode 0%o, size %d\n", sem->semkey, sem->name, path, mode, sem->size);
 
     sem->semid = semget(sem->semkey, sem->size, mode) ;
     if (sem->semid == -1)
@@ -132,7 +133,7 @@ int semaphore_open(struct semaphore * sem, int flags)
         return ERROR_SEMAPHORE_CANNOT_OPEN;
     }
 
-    printf("Successfylly openend semaphore %d (key 0x%08x) for %s.\n", sem->semid, sem->semkey, sem->name);
+    DPRINTF("Successfylly openend semaphore %d (key 0x%08x) for %s.\n", sem->semid, sem->semkey, sem->name);
 
     return S_OK;
 }
@@ -191,7 +192,7 @@ int semaphore_open_and_set(struct semaphore *sem, ... )
     res = semaphore_open(sem, OMODE_CREATE);
     if (res == S_OK)
     {
-        printf("Created semaphore. setting initial value\n");
+        DPRINTF("Created semaphore. setting initial value\n");
         res = semaphore_set_values(sem,values);
     }
     else if (res == ERROR_SEMAPHORE_ALREADY_EXISTS)
@@ -252,8 +253,18 @@ int semaphore_V(struct semaphore *sem, unsigned short nsem)
 }
 
 
-int semaphore_close(struct semaphore *sem)
+int semaphore_close(struct semaphore *sem, int remove)
 {
+    char path[MAX_PATH];
+
+    if (remove)
+    {
+        DPRINTF("Destroying semaphore %s 0x%08x (%d).\n", sem->name, sem->semkey, sem->semid);
+        semctl(sem->semid, 0, IPC_RMID);
+        sprintf(path, "%s/%s", SEMAPHORE_DIRECTORY, sem->name);
+        unlink(path);
+    }
+
     sem->semid = -1;
     sem->semkey = -1;
 

@@ -8,6 +8,7 @@
 
 #include "error.h"
 #include "shared_mem.h"
+#include "debug.h"
 
 int shared_memory_create(const char *name, int flags, int size, struct shared_memory **shmem_out )
 {
@@ -112,7 +113,7 @@ int shared_memory_open(struct shared_memory * shmem)
         break;
     }
 
-    printf("Opening shmkey %08x for %s (absolute path: %s), mode 0%o, size %d\n", shmem->shmkey, shmem->name, path, mode, shmem->size);
+    DPRINTF("Opening shmkey %08x for %s (absolute path: %s), mode 0%o, size %d\n", shmem->shmkey, shmem->name, path, mode, shmem->size);
 
     shmem->shmid = shmget(shmem->shmkey, shmem->size, mode) ;
     if (shmem->shmid == -1)
@@ -151,7 +152,7 @@ int shared_memory_open(struct shared_memory * shmem)
         return ERROR_SHARED_MEM_CANNOT_ATTACH;
     }
 
-    printf("Successfylly openend shm 0x%08x for %s.  Attached at 0x%016lx\n", shmem->shmkey, shmem->name, (intptr_t) shmem->ptr);
+    DPRINTF("Successfylly openend shm 0x%08x for %s.  Attached at 0x%016lx\n", shmem->shmkey, shmem->name, (intptr_t) shmem->ptr);
 
     return S_OK;
 }
@@ -172,7 +173,7 @@ int shared_memory_nattach(struct shared_memory *shmem, int *attach_count_out)
 }
 
 
-int shared_memory_close(struct shared_memory *shmem)
+int shared_memory_close(struct shared_memory *shmem, int *did_destroy)
 {
     struct shmid_ds ds;
     int destroy_mode;
@@ -207,10 +208,18 @@ int shared_memory_close(struct shared_memory *shmem)
 
         if (destroy)
         {
-            printf("Destroying shared memory %s 0x%08x (%d).\n", shmem->name, shmem->shmkey, shmem->shmid);
+            DPRINTF("Destroying shared memory %s 0x%08x (%d).\n", shmem->name, shmem->shmkey, shmem->shmid);
             shmctl(shmem->shmid, IPC_RMID, NULL);
             sprintf(path, "%s/%s", SHARED_MEMORY_DIRECTORY, shmem->name);
             unlink(path);
+
+            if (did_destroy != NULL)
+                *did_destroy = 1;
+        }
+        else
+        {
+            if (did_destroy != NULL)
+                *did_destroy = 0;
         }
 
         shmem->shmid = -1;

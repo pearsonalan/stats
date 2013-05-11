@@ -56,7 +56,7 @@ int basic_test()
 
     t = time(0);
     sprintf(shared_memory_ptr(shmem), "This shared memory was created by process %d at %s", getpid(), ctime_r(&t,buf) );
-    shared_memory_close(shmem);
+    shared_memory_close(shmem,NULL);
 
     return 0;
 }
@@ -139,7 +139,7 @@ int read_test(int dur)
         }
     }
 
-    shared_memory_close(shmem);
+    shared_memory_close(shmem,NULL);
 
     printf("ending read test\n");
 
@@ -216,7 +216,6 @@ int write_test(int dur)
             }
         }
 
-
         if (++i % 1000 == 0)
         {
             time(&end);
@@ -225,7 +224,7 @@ int write_test(int dur)
         }
     }
 
-    shared_memory_close(shmem);
+    shared_memory_close(shmem,NULL);
 
     printf("ending write test\n");
 

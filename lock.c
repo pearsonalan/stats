@@ -32,30 +32,6 @@ int lock_create(const char * name, struct lock **lock_out)
     return err;
 }
 
-int lock_init(struct lock *lock, const char *name)
-{
-    return semaphore_init(&lock->sem, name, 1);
-}
-
-int lock_open(struct lock *lock)
-{
-    return semaphore_open_and_set(&lock->sem, 1);
-}
-
-int lock_acquire(struct lock *lock)
-{
-    return semaphore_P(&lock->sem,0);
-}
-
-int lock_release(struct lock *lock)
-{
-    return semaphore_V(&lock->sem,0);
-}
-
-int lock_close(struct lock *lock)
-{
-    return semaphore_close(&lock->sem);
-}
 
 void lock_free(struct lock *lock)
 {

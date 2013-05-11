@@ -60,7 +60,7 @@ int run_test(int pidx)
         nanosleep(&ts, NULL);
     }
 
-    lock_close(&lock);
+    lock_close(&lock,0);
 
     return 0;
 }

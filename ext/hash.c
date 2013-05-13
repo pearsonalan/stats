@@ -1,3 +1,11 @@
+/*
+ * Paul Hsieh's SuperFastHash function
+ *
+ * http://www.azillionmonkeys.com/qed/hash.html
+ *
+ * Released under LGPL 2.1
+ */
+
 #include "hash.h"
 
 #undef get16bits

@@ -13,10 +13,26 @@
 static void stats_init_data(struct stats *stats);
 static int stats_hash_probe(struct stats_data *data, const char *key, int len);
 
+
+/*
+ * stats_create
+ *
+ * Create and initialize a stats object.  The resources needed for the stats
+ * (files, shared memory, semaphore, etc) are not opened yet. The stats_open
+ * call must be invoked.
+ *
+ * If stats_create returns a stats object, you must call stats_free on it
+ * to releaseall memory used by the stats object.
+ *
+ * Returns:
+ *    S_OK                              - success
+ *    ERROR_INVALID_PARAMETERS          - the name was too long
+ *    ERROR_MEMORY                      - out of memory / memory allocation error
+ */
 int stats_create(const char *name, struct stats **stats_out)
 {
     struct stats * stats = NULL;
-    int err = S_OK;
+    int err;
     char lock_name[SEMAPHORE_MAX_NAME_LEN+1];
     char mem_name[SHARED_MEMORY_MAX_NAME_LEN];
 
@@ -39,7 +55,10 @@ int stats_create(const char *name, struct stats **stats_out)
 
     stats = (struct stats *) malloc(sizeof(struct stats));
     if (stats == NULL)
+    {
+        err = ERROR_MEMORY;
         goto fail;
+    }
 
     stats->magic = STATS_MAGIC;
     stats->data = NULL;
@@ -67,6 +86,20 @@ ok:
     return err;
 }
 
+
+/*
+ * stats_open
+ *
+ * Opens the resources needed for a stats object. After this call returns
+ * successfully, the stats object is ready for use.
+ *
+ * The resources allocated by stats_open must be freed by a corresponding
+ * call to stats_close().
+ *
+ * Returns:
+ *    S_OK                              - success
+ *    ERROR_INVALID_PARAMETERS          - the stats object passed was not valid
+ */
 int stats_open(struct stats *stats)
 {
     int err;

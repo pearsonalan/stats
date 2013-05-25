@@ -3,27 +3,32 @@ DEBUG = 1
 
 # $(info OSTYPE = $(OSTYPE))
 
-OBJDIR =          obj
-BINDIR =          bin
+OBJDIR =		obj
+BINDIR =		bin
 
-STATSLIB =        $(OBJDIR)/libstats.a
+STATSLIB =		$(OBJDIR)/libstats.a
 
-LIB_OBJS =        $(OBJDIR)/stats.o $(OBJDIR)/shared_mem.o $(OBJDIR)/semaphore.o $(OBJDIR)/lock.o $(OBJDIR)/error.o $(OBJDIR)/hash.o
-STATS_TEST_OBJS = $(OBJDIR)/stats_test.o
-SHMEM_TEST_OBJS = $(OBJDIR)/shmem_test.o
-SEM_TEST_OBJS =   $(OBJDIR)/sem_test.o
-LOCK_TEST_OBJS =  $(OBJDIR)/lock_test.o
+LIB_OBJS =		$(OBJDIR)/stats.o $(OBJDIR)/shared_mem.o $(OBJDIR)/semaphore.o \
+			$(OBJDIR)/lock.o $(OBJDIR)/error.o $(OBJDIR)/hash.o
 
-TESTS =           $(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/find_prime $(BINDIR)/stats_test
+STATS_TEST_OBJS =	$(OBJDIR)/stats_test.o
+SHMEM_TEST_OBJS =	$(OBJDIR)/shmem_test.o
+SEM_TEST_OBJS =		$(OBJDIR)/sem_test.o
+LOCK_TEST_OBJS =	$(OBJDIR)/lock_test.o
+KEYSTATS_OBJS = 	$(OBJDIR)/keystats.o $(OBJDIR)/screenutil.o
 
-all: $(OBJDIR) $(BINDIR) $(STATSLIB) $(TESTS)
+TESTS = 		$(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/stats_test
+TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/keystats
+
+
+all: $(OBJDIR) $(BINDIR) $(STATSLIB) $(TESTS) $(TOOLS)
 
 clean:
-	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS)
+	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS) $(TOOLS)
 	-rmdir $(OBJDIR)
 	-rmdir $(BINDIR)
 
-INCLUDES=include ext
+INCLUDES=include ext util
 INCLUDEFLAGS=$(foreach dir,$(INCLUDES),-I $(dir))
 
 ifeq ($(DEBUG),1)
@@ -64,6 +69,12 @@ $(BINDIR)/lock_test: $(LOCK_TEST_OBJS) $(STATSLIB)
 $(BINDIR)/find_prime: $(OBJDIR)/find_prime.o
 	$(CC) $(LINKFLAGS) -o $@ $(OBJDIR)/find_prime.o $(LIBFLAGS)
 
+$(BINDIR)/statsview: $(OBJDIR)/statsview.o
+	$(CC) $(LINKFLAGS) -o $@ $(OBJDIR)/statsview.o $(LIBFLAGS) -lcurses
+
+$(BINDIR)/keystats: $(KEYSTATS_OBJS)
+	$(CC) $(LINKFLAGS) -o $@ $(KEYSTATS_OBJS) $(LIBFLAGS) -lcurses
+
 $(OBJDIR):
 	mkdir $(OBJDIR)
 
@@ -74,6 +85,9 @@ $(OBJDIR)/%.o: src/%.c
 	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
 $(OBJDIR)/%.o: ext/%.c
+	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
+
+$(OBJDIR)/%.o: util/%.c
 	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
 $(OBJDIR)/%.o: tools/%.c

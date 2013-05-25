@@ -22,7 +22,7 @@ struct stats_header
 
 /* stats_counter is the data for each counter
  *
- * The stats_counter should be a multiple of 16 bytes to preserve
+ * The stats_counter should be a multiple of 8 bytes to preserve
  * alignment. The current definition is 48 bytes.
  */
 

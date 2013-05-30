@@ -6,6 +6,7 @@
 #include <curses.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "stats.h"
 #include "error.h"
@@ -61,6 +62,7 @@ int main(int argc, char **argv)
     char counter_name[MAX_COUNTER_KEY_LENGTH+1];
     int j;
     int err;
+    struct timeval tv;
 
     if (argc != 2)
     {
@@ -87,10 +89,11 @@ int main(int argc, char **argv)
     sa.sa_handler = &sigfunc;
     sigaction(SIGINT, &sa, NULL);
 
-    // init_screen();
+    init_screen();
 
     while (!signal_received)
     {
+        gettimeofday(&tv,NULL);
 
         nseq = stats_get_sequence_number(stats);
         if (nseq != seq)
@@ -105,18 +108,23 @@ int main(int argc, char **argv)
             seq = nseq;
         }
 
-        printf("\n\n[[===============\n");
+        clear();
+
+        mvprintw(0,0,"SAMPLE @ %d.%06d\n", tv.tv_sec, tv.tv_usec);
         for (j = 0; j <  ncounters; j++)
         {
             counter_get_key(counters[j],counter_name,MAX_COUNTER_KEY_LENGTH+1);
             printf("%s: %lld\n", counter_name, counters[j]->ctr_value.val64);
+
+            mvprintw(j+2,0,"%s", counter_name);
+            mvprintw(j+2,50,"%lld", counters[j]->ctr_value.val64);
         }
-        printf("===============]]\n\n");
+        refresh();
 
         msleep(1000);
     }
 
-    // close_screen();
+    close_screen();
 
     if (stats)
     {

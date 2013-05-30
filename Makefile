@@ -16,6 +16,7 @@ SHMEM_TEST_OBJS =	$(OBJDIR)/shmem_test.o
 SEM_TEST_OBJS =		$(OBJDIR)/sem_test.o
 LOCK_TEST_OBJS =	$(OBJDIR)/lock_test.o
 KEYSTATS_OBJS = 	$(OBJDIR)/keystats.o $(OBJDIR)/screenutil.o
+STATSVIEW_OBJS = 	$(OBJDIR)/statsview.o $(OBJDIR)/screenutil.o
 
 TESTS = 		$(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/stats_test
 TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/keystats
@@ -69,8 +70,8 @@ $(BINDIR)/lock_test: $(LOCK_TEST_OBJS) $(STATSLIB)
 $(BINDIR)/find_prime: $(OBJDIR)/find_prime.o
 	$(CC) $(LINKFLAGS) -o $@ $(OBJDIR)/find_prime.o $(LIBFLAGS)
 
-$(BINDIR)/statsview: $(OBJDIR)/statsview.o
-	$(CC) $(LINKFLAGS) -o $@ $(OBJDIR)/statsview.o $(LIBFLAGS) -lcurses
+$(BINDIR)/statsview: $(STATSVIEW_OBJS)
+	$(CC) $(LINKFLAGS) -o $@ $(STATSVIEW_OBJS) $(LIBFLAGS) -lcurses
 
 $(BINDIR)/keystats: $(KEYSTATS_OBJS)
 	$(CC) $(LINKFLAGS) -o $@ $(KEYSTATS_OBJS) $(LIBFLAGS) -lcurses

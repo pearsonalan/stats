@@ -56,12 +56,9 @@ int main(int argc, char **argv)
 {
     struct stats *stats = NULL;
     struct sigaction sa;
-    struct stats_counter **counters;
-    int seq = 0, nseq;
-    int ncounters = 0;
+    struct stats_counter_list *cl;
     char counter_name[MAX_COUNTER_KEY_LENGTH+1];
-    int j;
-    int err;
+    int j, err, n, maxy, col;
     struct timeval tv;
 
     if (argc != 2)
@@ -70,14 +67,13 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    /* allocate an array of pointers to counter objects */
-    counters = (struct stats_counter **) malloc(sizeof(struct stats_counter *) * COUNTER_TABLE_SIZE);
-    if (!counters)
+    cl = (struct stats_counter_list *)malloc(sizeof(struct stats_counter_list));
+    if (!cl)
     {
         printf("failed to allocate memory\n");
         return ERROR_FAIL;
     }
-    memset(counters, 0, sizeof(struct stats_counter *) * COUNTER_TABLE_SIZE);
+    memset(cl,0,sizeof(struct stats_counter_list));
 
     stats = open_stats(argv[1]);
     if (!stats)
@@ -95,29 +91,35 @@ int main(int argc, char **argv)
     {
         gettimeofday(&tv,NULL);
 
-        nseq = stats_get_sequence_number(stats);
-        if (nseq != seq)
+        if (stats_cl_is_updated(stats,cl));
         {
             /* sequence number has changed. this means there might be new counter definitions.
                reload the counter list */
-            err = stats_get_counters(stats, counters, COUNTER_TABLE_SIZE, &ncounters, &nseq);
+            err = stats_get_counter_list(stats, cl);
             if (err != S_OK)
             {
                 printf("Error %08x getting counters %s\n",err,error_message(err));
             }
-            seq = nseq;
         }
 
         clear();
 
-        mvprintw(0,0,"SAMPLE @ %d.%06d\n", tv.tv_sec, tv.tv_usec);
-        for (j = 0; j <  ncounters; j++)
+        mvprintw(0,0,"SAMPLE @ %d.%2d  SEQ:%d\n", tv.tv_sec, tv.tv_usec / 1000, cl->cl_seq_no);
+        n = 2;
+        maxy = getmaxy(stdscr);
+        col = 0;
+        for (j = 0; j < cl->cl_count; j++)
         {
-            counter_get_key(counters[j],counter_name,MAX_COUNTER_KEY_LENGTH+1);
-            printf("%s: %lld\n", counter_name, counters[j]->ctr_value.val64);
+            counter_get_key(cl->cl_ctr[j],counter_name,MAX_COUNTER_KEY_LENGTH+1);
+            printf("%s: %lld\n", counter_name, cl->cl_ctr[j]->ctr_value.val64);
 
-            mvprintw(j+2,0,"%s", counter_name);
-            mvprintw(j+2,50,"%lld", counters[j]->ctr_value.val64);
+            mvprintw(n,col+0,"%s", counter_name);
+            mvprintw(n,col+33,"%-7lld", cl->cl_ctr[j]->ctr_value.val64);
+            if (++n == maxy)
+            {
+                col += 45;
+                n = 2;
+            }
         }
         refresh();
 
@@ -131,6 +133,9 @@ int main(int argc, char **argv)
         stats_close(stats);
         stats_free(stats);
     }
+
+    if (cl)
+        free(cl);
 
     if (signal_received)
         printf("Exiting on signal.\n");

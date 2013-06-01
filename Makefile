@@ -70,10 +70,10 @@ $(BINDIR)/lock_test: $(LOCK_TEST_OBJS) $(STATSLIB)
 $(BINDIR)/find_prime: $(OBJDIR)/find_prime.o
 	$(CC) $(LINKFLAGS) -o $@ $(OBJDIR)/find_prime.o $(LIBFLAGS)
 
-$(BINDIR)/statsview: $(STATSVIEW_OBJS)
+$(BINDIR)/statsview: $(STATSVIEW_OBJS) $(STATSLIB)
 	$(CC) $(LINKFLAGS) -o $@ $(STATSVIEW_OBJS) $(LIBFLAGS) -lcurses
 
-$(BINDIR)/keystats: $(KEYSTATS_OBJS)
+$(BINDIR)/keystats: $(KEYSTATS_OBJS) $(STATSLIB)
 	$(CC) $(LINKFLAGS) -o $@ $(KEYSTATS_OBJS) $(LIBFLAGS) -lcurses
 
 $(OBJDIR):

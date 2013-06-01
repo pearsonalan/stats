@@ -23,10 +23,10 @@ struct stats_header
 /* stats_counter is the data for each counter
  *
  * The stats_counter should be a multiple of 8 bytes to preserve
- * alignment. The current definition is 48 bytes.
+ * alignment. The current definition is 56 bytes.
  */
 
-#define MAX_COUNTER_KEY_LENGTH 28
+#define MAX_COUNTER_KEY_LENGTH 32
 
 #define ALLOCATION_STATUS_FREE        0
 #define ALLOCATION_STATUS_CLAIMED    -1   /* not used right now */
@@ -35,11 +35,12 @@ struct stats_header
 struct stats_counter
 {
     int ctr_allocation_status;
-    int ctr_flags;
+    int ctr_allocation_seq;
     union {
         long long val64;
         long      val32;
     } ctr_value;
+    int ctr_flags;
     int ctr_key_len;
     char ctr_key[MAX_COUNTER_KEY_LENGTH];
 };
@@ -81,7 +82,24 @@ int stats_close(struct stats *stats);
 int stats_free(struct stats *stats);
 
 int stats_allocate_counter(struct stats *stats, const char *name, struct stats_counter **ctr_out);
+
+/* deprecated. use stats_counter_list instead */
 int stats_get_counters(struct stats *stats, struct stats_counter **counters, int counter_size, int *counter_out, int *sequence_number_out);
+
+
+
+struct stats_counter_list
+{
+    int cl_seq_no;
+    int cl_count;
+    struct stats_counter *cl_ctr[COUNTER_TABLE_SIZE];
+};
+
+int stats_get_counter_list(struct stats *stats, struct stats_counter_list *cl);
+int stats_cl_is_updated(struct stats *stats, struct stats_counter_list *cl);
+
+
+
 
 void counter_get_key(struct stats_counter *ctr, char *buf, int buflen);
 void counter_increment(struct stats_counter *ctr);

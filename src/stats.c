@@ -36,8 +36,9 @@ int stats_create(const char *name, struct stats **stats_out)
     char lock_name[SEMAPHORE_MAX_NAME_LEN+1];
     char mem_name[SHARED_MEMORY_MAX_NAME_LEN];
 
+    printf("Sizeof stats counter is %ld\n",sizeof(struct stats_counter));
     assert(sizeof(struct stats_header) == 16);
-    assert(sizeof(struct stats_counter) == 48);
+    assert(sizeof(struct stats_counter) == 56);
 
     if (stats_out == NULL)
         return ERROR_INVALID_PARAMETERS;
@@ -195,9 +196,9 @@ int stats_allocate_counter(struct stats *stats, const char *name, struct stats_c
         if (ctr->ctr_allocation_status != ALLOCATION_STATUS_ALLOCATED)
         {
             ctr->ctr_allocation_status = ALLOCATION_STATUS_ALLOCATED;
+            ctr->ctr_allocation_seq = stats->data->hdr.stats_sequence_number++;
             ctr->ctr_key_len = key_len;
             memcpy(ctr->ctr_key, name, key_len);
-            stats->data->hdr.stats_sequence_number++;
         }
     }
 
@@ -210,16 +211,24 @@ int stats_allocate_counter(struct stats *stats, const char *name, struct stats_c
     return err;
 }
 
+static int ctr_compare(const void * a, const void * b)
+{
+    const struct stats_counter *actr = *(struct stats_counter **)a;
+    const struct stats_counter *bctr = *(struct stats_counter **)b;
+    return actr->ctr_allocation_seq - bctr->ctr_allocation_seq;
+}
+
 int stats_get_counters(struct stats *stats, struct stats_counter **counters, int counter_size, int *counter_out, int *sequence_number_out)
 {
     int err = S_OK;
     int i, n;
     struct stats_data *data;
+    int seq_no;
 
     if (!stats || stats->magic != STATS_MAGIC || stats->data == NULL)
         return ERROR_INVALID_PARAMETERS;
 
-    if (!counters)
+    if (!counters || counter_size <= 0)
         return ERROR_INVALID_PARAMETERS;
 
     data = stats->data;
@@ -229,7 +238,7 @@ int stats_get_counters(struct stats *stats, struct stats_counter **counters, int
 
     lock_acquire(&stats->lock);
 
-    while (i < COUNTER_TABLE_SIZE)
+    while (i < COUNTER_TABLE_SIZE && n < counter_size)
     {
         if (data->ctr[i].ctr_allocation_status == ALLOCATION_STATUS_ALLOCATED)
         {
@@ -239,13 +248,17 @@ int stats_get_counters(struct stats *stats, struct stats_counter **counters, int
         i++;
     }
 
+    seq_no = data->hdr.stats_sequence_number;
+
+    lock_release(&stats->lock);
+
+    qsort(counters,n,sizeof(struct stats_counter *),ctr_compare);
+
     if (counter_out)
         *counter_out = n;
 
     if (sequence_number_out)
-        *sequence_number_out = data->hdr.stats_sequence_number;
-
-    lock_release(&stats->lock);
+        *sequence_number_out = seq_no;
 
     return err;
 }
@@ -261,14 +274,12 @@ static int stats_hash_probe(struct stats_data *data, const char *key, int len)
 
     if (data->ctr[k].ctr_allocation_status == ALLOCATION_STATUS_FREE)
     {
-        DPRINTF("emtpy slot %d found after %d probes\n", k, probes);
         return k;
     }
     else if (data->ctr[k].ctr_allocation_status == ALLOCATION_STATUS_ALLOCATED &&
              data->ctr[k].ctr_key_len == len &&
              memcmp(data->ctr[k].ctr_key,key,len) == 0)
     {
-        DPRINTF("found matching slot %d found after %d probes\n", k, probes);
         return k;
     }
 
@@ -279,22 +290,64 @@ static int stats_hash_probe(struct stats_data *data, const char *key, int len)
         probes++;
         if (data->ctr[k].ctr_allocation_status == ALLOCATION_STATUS_FREE)
         {
-            DPRINTF("emtpy slot %d found after %d probes\n", k, probes);
             return k;
         }
         else if (data->ctr[k].ctr_allocation_status == ALLOCATION_STATUS_ALLOCATED &&
                  data->ctr[k].ctr_key_len == len &&
                  memcmp(data->ctr[k].ctr_key,key,len) == 0)
         {
-            DPRINTF("found matching slot %d found after %d probes\n", k, probes);
             return k;
         }
         n = n * 2;
     }
 
-    DPRINTF("no emtpy slot %d found after %d probes\n", k, probes);
     return -1;
 }
+
+int stats_get_counter_list(struct stats *stats, struct stats_counter_list *cl)
+{
+    int err = S_OK;
+    int i, n;
+    struct stats_data *data;
+
+    if (!stats || stats->magic != STATS_MAGIC || stats->data == NULL)
+        return ERROR_INVALID_PARAMETERS;
+
+    if (!cl)
+        return ERROR_INVALID_PARAMETERS;
+
+    data = stats->data;
+    memset(cl, 0, sizeof(struct stats_counter_list));
+    n = 0;
+    i = 0;
+
+    lock_acquire(&stats->lock);
+
+    while (i < COUNTER_TABLE_SIZE)
+    {
+        if (data->ctr[i].ctr_allocation_status == ALLOCATION_STATUS_ALLOCATED)
+        {
+            cl->cl_ctr[n] = data->ctr + i;
+            n++;
+        }
+        i++;
+    }
+
+    cl->cl_seq_no = data->hdr.stats_sequence_number;
+
+    lock_release(&stats->lock);
+
+    cl->cl_count = n;
+    qsort(cl->cl_ctr,n,sizeof(struct stats_counter *),ctr_compare);
+
+    return err;
+}
+
+int stats_cl_is_updated(struct stats *stats, struct stats_counter_list *cl)
+{
+    return cl->cl_seq_no != stats->data->hdr.stats_sequence_number;
+}
+
 
 void counter_get_key(struct stats_counter *ctr, char *buf, int buflen)
 {

@@ -343,6 +343,33 @@ int stats_get_counter_list(struct stats *stats, struct stats_counter_list *cl)
     return err;
 }
 
+int stats_cl_create(struct stats_counter_list **cl_out)
+{
+    struct stats_counter_list *cl;
+
+    if (cl_out == NULL)
+        return ERROR_INVALID_PARAMETERS;
+
+    cl = (struct stats_counter_list *)malloc(sizeof(struct stats_counter_list));
+    if (!cl)
+        return ERROR_FAIL;
+
+    stats_cl_init(cl);
+    *cl_out = cl;
+
+    return S_OK;
+}
+
+void stats_cl_init(struct stats_counter_list *cl)
+{
+    memset(cl,0,sizeof(struct stats_counter_list));
+}
+
+void stats_cl_free(struct stats_counter_list *cl)
+{
+    free(cl);
+}
+
 int stats_cl_is_updated(struct stats *stats, struct stats_counter_list *cl)
 {
     return cl->cl_seq_no != stats->data->hdr.stats_sequence_number;

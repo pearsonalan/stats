@@ -55,8 +55,9 @@ static struct stats *open_stats(const char *name)
 int main(int argc, char **argv)
 {
     struct stats *stats = NULL;
+    struct stats_counter_list *cl = NULL;
+    struct stats_sample *sample = NULL;
     struct sigaction sa;
-    struct stats_counter_list *cl;
     char counter_name[MAX_COUNTER_KEY_LENGTH+1];
     int j, err, n, maxy, col;
     struct timeval tv;
@@ -67,17 +68,16 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    cl = (struct stats_counter_list *)malloc(sizeof(struct stats_counter_list));
-    if (!cl)
+    if (stats_cl_create(&cl) != S_OK)
     {
-        printf("failed to allocate memory\n");
+        printf("Failed to allocate stats counter list\n");
         return ERROR_FAIL;
     }
-    memset(cl,0,sizeof(struct stats_counter_list));
 
     stats = open_stats(argv[1]);
     if (!stats)
     {
+        printf("Failed to open stats %s\n");
         return ERROR_FAIL;
     }
 
@@ -135,7 +135,7 @@ int main(int argc, char **argv)
     }
 
     if (cl)
-        free(cl);
+        stats_cl_free(cl);
 
     if (signal_received)
         printf("Exiting on signal.\n");

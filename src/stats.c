@@ -16,6 +16,15 @@ static void stats_init_data(struct stats *stats);
 static int stats_hash_probe(struct stats_data *data, const char *key, int len);
 
 
+static long long current_time()
+{
+    struct timeval tv;
+
+    gettimeofday(&tv,NULL);
+
+    return (long long) tv.tv_sec + ((long long) tv.tv_usec / 1000ll);
+}
+
 /*
  * stats_create
  *
@@ -345,6 +354,11 @@ int stats_get_counter_list(struct stats *stats, struct stats_counter_list *cl)
     return err;
 }
 
+
+/**
+ * stats_counter_list functions
+ */
+
 int stats_cl_create(struct stats_counter_list **cl_out)
 {
     struct stats_counter_list *cl;
@@ -378,6 +392,12 @@ int stats_cl_is_updated(struct stats *stats, struct stats_counter_list *cl)
 }
 
 
+
+/**
+ * stats_sample functions
+ *
+ */
+
 int stats_sample_create(struct stats_sample **sample_out)
 {
     struct stats_sample *sample;
@@ -407,7 +427,6 @@ void stats_sample_free(struct stats_sample *sample)
 
 int stats_get_sample(struct stats *stats, struct stats_counter_list *cl, struct stats_sample *sample)
 {
-    struct timeval tv;
     long long sample_time;
     int i, err;
 
@@ -415,8 +434,7 @@ int stats_get_sample(struct stats *stats, struct stats_counter_list *cl, struct 
         return ERROR_INVALID_PARAMETERS;
 
     /* get the sample time */
-    gettimeofday(&tv,NULL);
-    sample_time = (long long) tv.tv_sec * 1000ll + (long long)tv.tv_usec / 1000ll;
+    sample_time = current_time();
 
     /* if the counter list has been updated, update the passed in counter list */
     if (stats_cl_is_updated(stats,cl))
@@ -443,6 +461,10 @@ int stats_get_sample(struct stats *stats, struct stats_counter_list *cl, struct 
     return S_OK;
 }
 
+
+/**
+ * counter functions
+ */
 
 void counter_get_key(struct stats_counter *ctr, char *buf, int buflen)
 {

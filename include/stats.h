@@ -134,7 +134,14 @@ int stats_get_counters(struct stats *stats, struct stats_counter **counters, int
  * stats_counter_list
  *
  * stats_counter_list contains a snapshot of the set of counters in the shared
- * memory at a point in time.  The cl_seq_no represents the
+ * memory at a point in time.
+ *
+ * cl_seq_no - represents the point in time which this counter list represents
+ *      this value is copied from the stats.stats_sequence_number at the time
+ *      the counter list is captured.
+ * cl_count - the number of counters in cl_ctr
+ * cl_ctr - a contiguous array of pointers to stats_counter objects
+ *     from [0,cl_count-1]
  */
 
 struct stats_counter_list

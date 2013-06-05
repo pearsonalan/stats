@@ -74,6 +74,12 @@ int main(int argc, char **argv)
         return ERROR_FAIL;
     }
 
+    if (stats_sample_create(&sample) != S_OK)
+    {
+        printf("Failed to allocate stats sample\n");
+        return ERROR_FAIL;
+    }
+
     stats = open_stats(argv[1]);
     if (!stats)
     {

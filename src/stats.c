@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
+#include <sys/time.h>
 
 #include "error.h"
 #include "stats.h"
@@ -373,6 +375,72 @@ void stats_cl_free(struct stats_counter_list *cl)
 int stats_cl_is_updated(struct stats *stats, struct stats_counter_list *cl)
 {
     return cl->cl_seq_no != stats->data->hdr.stats_sequence_number;
+}
+
+
+int stats_sample_create(struct stats_sample **sample_out)
+{
+    struct stats_sample *sample;
+
+    if (sample_out == NULL)
+        return ERROR_INVALID_PARAMETERS;
+
+    sample = (struct stats_sample *)malloc(sizeof(struct stats_sample));
+    if (!sample)
+        return ERROR_FAIL;
+
+    stats_sample_init(sample);
+    *sample_out = sample;
+
+    return S_OK;
+}
+
+void stats_sample_init(struct stats_sample *sample)
+{
+    memset(sample,0,sizeof(struct stats_sample));
+}
+
+void stats_sample_free(struct stats_sample *sample)
+{
+    free(sample);
+}
+
+int stats_get_sample(struct stats *stats, struct stats_counter_list *cl, struct stats_sample *sample)
+{
+    struct timeval tv;
+    long long sample_time;
+    int i, err;
+
+    if (stats == NULL || cl == NULL || sample == NULL)
+        return ERROR_INVALID_PARAMETERS;
+
+    /* get the sample time */
+    gettimeofday(&tv,NULL);
+    sample_time = (long long) tv.tv_sec * 1000ll + (long long)tv.tv_usec / 1000ll;
+
+    /* if the counter list has been updated, update the passed in counter list */
+    if (stats_cl_is_updated(stats,cl))
+    {
+        /* sequence number has changed. this means there might be new counter definitions.
+           reload the counter list */
+        err = stats_get_counter_list(stats, cl);
+        if (err != S_OK)
+            return err;
+    }
+
+    /* save the sequence number */
+    sample->sample_seq_no = cl->cl_seq_no;
+
+    /* save the sample time */
+    sample->sample_time = sample_time;
+
+    /* save the sample data */
+    for (i = 0; i < cl->cl_count; i++)
+    {
+        sample->sample_value[i] = cl->cl_ctr[i]->ctr_value;
+    }
+
+    return S_OK;
 }
 
 

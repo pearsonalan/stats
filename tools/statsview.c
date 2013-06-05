@@ -77,7 +77,7 @@ int main(int argc, char **argv)
     stats = open_stats(argv[1]);
     if (!stats)
     {
-        printf("Failed to open stats %s\n");
+        printf("Failed to open stats %s\n", argv[1]);
         return ERROR_FAIL;
     }
 
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
     {
         gettimeofday(&tv,NULL);
 
-        if (stats_cl_is_updated(stats,cl));
+        if (stats_cl_is_updated(stats,cl))
         {
             /* sequence number has changed. this means there might be new counter definitions.
                reload the counter list */
@@ -137,6 +137,9 @@ int main(int argc, char **argv)
     if (cl)
         stats_cl_free(cl);
 
+    if (sample)
+        stats_sample_free(sample);
+    
     if (signal_received)
         printf("Exiting on signal.\n");
 

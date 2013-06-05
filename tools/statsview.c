@@ -60,7 +60,6 @@ int main(int argc, char **argv)
     struct sigaction sa;
     char counter_name[MAX_COUNTER_KEY_LENGTH+1];
     int j, err, n, maxy, col;
-    struct timeval tv;
 
     if (argc != 2)
     {
@@ -95,32 +94,23 @@ int main(int argc, char **argv)
 
     while (!signal_received)
     {
-        gettimeofday(&tv,NULL);
-
-        if (stats_cl_is_updated(stats,cl))
+        err = stats_get_sample(stats,cl,sample);
+        if (err != S_OK)
         {
-            /* sequence number has changed. this means there might be new counter definitions.
-               reload the counter list */
-            err = stats_get_counter_list(stats, cl);
-            if (err != S_OK)
-            {
-                printf("Error %08x getting counters %s\n",err,error_message(err));
-            }
+            printf("Error %08x (%s) getting sample\n",err,error_message(err));
         }
 
         clear();
 
-        mvprintw(0,0,"SAMPLE @ %d.%2d  SEQ:%d\n", tv.tv_sec, tv.tv_usec / 1000, cl->cl_seq_no);
+        mvprintw(0,0,"SAMPLE @ %d.%2d  SEQ:%d\n", sample->sample_time / 1000, sample->sample_time % 1000, sample->sample_seq_no);
         n = 2;
         maxy = getmaxy(stdscr);
         col = 0;
         for (j = 0; j < cl->cl_count; j++)
         {
             counter_get_key(cl->cl_ctr[j],counter_name,MAX_COUNTER_KEY_LENGTH+1);
-            printf("%s: %lld\n", counter_name, cl->cl_ctr[j]->ctr_value.val64);
-
             mvprintw(n,col+0,"%s", counter_name);
-            mvprintw(n,col+33,"%-7lld", cl->cl_ctr[j]->ctr_value.val64);
+            mvprintw(n,col+33,"%-7lld", sample->sample_value[j].val64);
             if (++n == maxy)
             {
                 col += 45;
@@ -145,7 +135,7 @@ int main(int argc, char **argv)
 
     if (sample)
         stats_sample_free(sample);
-    
+
     if (signal_received)
         printf("Exiting on signal.\n");
 

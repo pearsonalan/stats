@@ -12,8 +12,8 @@
 typedef union {
     long long val64;
     struct {
-        long    hi;
-        long    lo;
+        int    hi;
+        int    lo;
     } val32;
 } STATS_VALUE;
 

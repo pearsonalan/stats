@@ -17,17 +17,28 @@ SEM_TEST_OBJS =		$(OBJDIR)/sem_test.o
 LOCK_TEST_OBJS =	$(OBJDIR)/lock_test.o
 KEYSTATS_OBJS = 	$(OBJDIR)/keystats.o $(OBJDIR)/screenutil.o
 STATSVIEW_OBJS = 	$(OBJDIR)/statsview.o $(OBJDIR)/screenutil.o
+HISTD_OBJS =		$(OBJDIR)/histd.o
+HISTD_CLIENT_OBJS =	$(OBJDIR)/histd_client.o
 
 TESTS = 		$(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/stats_test
-TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/keystats
+TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/keystats $(BINDIR)/histd_client
+DAEMONS =		$(BINDIR)/histd
 
+.PHONY: rubyext
 
-all: $(OBJDIR) $(BINDIR) $(STATSLIB) $(TESTS) $(TOOLS)
+all: $(OBJDIR) $(BINDIR) $(STATSLIB) $(TESTS) $(TOOLS) $(DAEMONS) # rubyext
 
 clean:
 	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS) $(TOOLS)
 	-rmdir $(OBJDIR)
 	-rmdir $(BINDIR)
+
+install:
+	/usr/bin/install include/stats/*.h /usr/local/include/stats/
+	/usr/bin/install $(STATSLIB) /usr/local/lib
+
+rubyext:
+	cd ruby && make
 
 INCLUDES=include ext util
 INCLUDEFLAGS=$(foreach dir,$(INCLUDES),-I $(dir))
@@ -76,6 +87,12 @@ $(BINDIR)/statsview: $(STATSVIEW_OBJS) $(STATSLIB)
 $(BINDIR)/keystats: $(KEYSTATS_OBJS) $(STATSLIB)
 	$(CC) $(LINKFLAGS) -o $@ $(KEYSTATS_OBJS) $(LIBFLAGS) -lcurses
 
+$(BINDIR)/histd: $(HISTD_OBJS)
+	$(CC) $(LINKFLAGS) -o $@ $(HISTD_OBJS) $(LIBFLAGS) -levent
+
+$(BINDIR)/histd_client: $(HISTD_CLIENT_OBJS)
+	$(CC) $(LINKFLAGS) -o $@ $(HISTD_CLIENT_OBJS)
+
 $(OBJDIR):
 	mkdir $(OBJDIR)
 
@@ -97,14 +114,21 @@ $(OBJDIR)/%.o: tools/%.c
 $(OBJDIR)/%.o: test/%.c
 	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
+$(OBJDIR)/%.o: histd/%.c
+	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
-$(OBJDIR)/lock.o: include/error.h include/semaphore.h include/omode.h include/lock.h
-$(OBJDIR)/stats.o: include/error.h include/stats.h include/shared_mem.h include/semaphore.h include/lock.h include/omode.h
-$(OBJDIR)/shared_mem.o: include/error.h include/shared_mem.h include/omode.h
-$(OBJDIR)/semaphore.o: include/error.h include/semaphore.h include/omode.h
+$(OBJDIR)/%.o: histd_client/%.c
+	$(CC) -c $(INCLUDEFLAGS) $(CFLAGS) -o $@ $<
 
-$(OBJDIR)/shmem_test.o: include/error.h include/shared_mem.h include/omode.h
-$(OBJDIR)/stats_test.o: include/error.h include/shared_mem.h include/omode.h include/semaphore.h include/lock.h include/stats.h
-$(OBJDIR)/sem_test.o: include/error.h include/semaphore.h include/omode.h
-$(OBJDIR)/lock_test.o: include/error.h include/semaphore.h include/lock.h include/omode.h
+$(OBJDIR)/lock.o: include/stats/error.h include/stats/semaphore.h include/stats/omode.h include/stats/lock.h
+$(OBJDIR)/stats.o: include/stats/error.h include/stats/stats.h include/stats/shared_mem.h include/stats/semaphore.h include/stats/lock.h include/stats/omode.h
+$(OBJDIR)/shared_mem.o: include/stats/error.h include/stats/shared_mem.h include/stats/omode.h
+$(OBJDIR)/semaphore.o: include/stats/error.h include/stats/semaphore.h include/stats/omode.h
 
+$(OBJDIR)/shmem_test.o: include/stats/error.h include/stats/shared_mem.h include/stats/omode.h
+$(OBJDIR)/stats_test.o: include/stats/error.h include/stats/shared_mem.h include/stats/omode.h include/stats/semaphore.h include/stats/lock.h include/stats/stats.h
+$(OBJDIR)/sem_test.o: include/stats/error.h include/stats/semaphore.h include/stats/omode.h
+$(OBJDIR)/lock_test.o: include/stats/error.h include/stats/semaphore.h include/stats/lock.h include/stats/omode.h
+
+$(OBJDIR)/histd.o: histd/histd.h include/histd/protocol.h
+$(OBJDIR)/histd_client.o: include/histd/protocol.h

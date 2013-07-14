@@ -7,10 +7,10 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "error.h"
-#include "stats.h"
-#include "hash.h"
-#include "debug.h"
+#include "stats/error.h"
+#include "stats/stats.h"
+#include "stats/hash.h"
+#include "stats/debug.h"
 
 static void stats_init_data(struct stats *stats);
 static int stats_hash_probe(struct stats_data *data, const char *key, int len);
@@ -47,7 +47,7 @@ int stats_create(const char *name, struct stats **stats_out)
     char lock_name[SEMAPHORE_MAX_NAME_LEN+1];
     char mem_name[SHARED_MEMORY_MAX_NAME_LEN];
 
-    printf("Sizeof stats counter is %ld\n",sizeof(struct stats_counter));
+    /* printf("Sizeof stats counter is %ld\n",sizeof(struct stats_counter)); */
     assert(sizeof(struct stats_header) == 16);
     assert(sizeof(struct stats_counter) == 56);
 
@@ -458,9 +458,25 @@ int stats_get_sample(struct stats *stats, struct stats_counter_list *cl, struct 
         sample->sample_value[i] = cl->cl_ctr[i]->ctr_value;
     }
 
+    sample->sample_count = cl->cl_count;
+
     return S_OK;
 }
 
+long long stats_sample_get_value(struct stats_sample *sample, int index)
+{
+    if (sample == NULL || index > sample->sample_count)
+        return 0;
+    return sample->sample_value[index].val64;
+}
+
+
+long long stats_sample_get_delta(struct stats_sample *sample, struct stats_sample *prev_sample, int index)
+{
+    if (sample == NULL || index > sample->sample_count || prev_sample == NULL || index > prev_sample->sample_count)
+        return 0;
+    return sample->sample_value[index].val64 - prev_sample->sample_value[index].val64;
+}
 
 /**
  * counter functions

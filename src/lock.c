@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "error.h"
-#include "lock.h"
+#include "stats/error.h"
+#include "stats/lock.h"
 
 int lock_create(const char * name, struct lock **lock_out)
 {

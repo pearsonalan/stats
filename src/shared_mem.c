@@ -6,9 +6,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "error.h"
-#include "shared_mem.h"
-#include "debug.h"
+#include "stats/error.h"
+#include "stats/shared_mem.h"
+#include "stats/debug.h"
 
 int shared_memory_create(const char *name, int flags, int size, struct shared_memory **shmem_out )
 {

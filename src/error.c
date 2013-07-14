@@ -1,6 +1,6 @@
 /* error.c */
 
-#include "error.h"
+#include "stats/error.h"
 
 const char * error_message(int code)
 {

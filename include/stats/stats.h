@@ -173,6 +173,8 @@ struct stats_sample
 int stats_sample_create(struct stats_sample **sample_out);
 void stats_sample_init(struct stats_sample *sample);
 void stats_sample_free(struct stats_sample *sample);
+long long stats_sample_get_value(struct stats_sample *sample, int index);
+long long stats_sample_get_delta(struct stats_sample *sample, struct stats_sample *prev_sample, int index);
 
 int stats_get_sample(struct stats *stats, struct stats_counter_list *cl, struct stats_sample *sample);
 

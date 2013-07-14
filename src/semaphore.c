@@ -9,9 +9,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "error.h"
-#include "semaphore.h"
-#include "debug.h"
+#include "stats/error.h"
+#include "stats/semaphore.h"
+#include "stats/debug.h"
 
 int semaphore_create(const char *name, unsigned short size, struct semaphore **sem_out )
 {

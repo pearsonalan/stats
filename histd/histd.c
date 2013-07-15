@@ -252,7 +252,7 @@ int metric_history_open(struct metric_history *mh, char * path)
         /* need to initialize the file */
         printf("Initializing new history file\n");
 
-        /* TODO: possibly use flock to guarantee that two processes are not locking at the same time */
+        /* TODO: possibly use flock to guarantee that two processes are not initializing the file at the same time */
         metric_history_init_file(fd);
 
         map_size = hist_file_new_size();
@@ -261,7 +261,6 @@ int metric_history_open(struct metric_history *mh, char * path)
     else
     {
         /* TODO: possibly use a shared lock here to make sure we don't use the file while it is being initialized by another process */
-
         map_size = s.st_size;
         new_file = 0;
     }
@@ -474,6 +473,17 @@ static int metrics_hash_probe(struct metrics *m, const char *key, long len)
     }
 
     return -1;
+}
+
+struct metric_history * metrics_find_metric(struct metrics *m, const char * metric_name)
+{
+    int k;
+    struct metric_history *mh;
+
+    k = metrics_hash_probe(m,metric_name,strlen(metric_name));
+    mh = m->metrics[k];
+
+    return mh;
 }
 
 static int metrics_store_metric(struct metrics *m, uint32_t timestamp, char *metric_name, uint64_t metric_value)

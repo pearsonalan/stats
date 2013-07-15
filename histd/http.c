@@ -13,11 +13,13 @@
 #include <event2/buffer.h>
 #include <event2/util.h>
 #include <event2/http.h>
+#include <event2/keyvalq_struct.h>
 
 #include "histd.h"
 #include "http.h"
 #include "stats/error.h"
 
+static int http_get_address(struct http* http, char *buffer, int buflen);
 
 static const struct table_entry {
     const char *extension;
@@ -55,13 +57,93 @@ not_found:
     return "application/octet-stream";
 }
 
-static void http_data_request_cb(struct evhttp_request *req, void *arg)
+static void http_list_request_cb(struct evhttp_request *req, void *arg)
 {
     // struct http *http = (struct http *)arg;
+    // struct evbuffer *evb = NULL;
+
+    printf("list request\n");
+
+
+}
+
+static struct metric_history * http_find_metrics_from_query(struct metrics *m, const char *query)
+{
+    struct metric_history *mh = NULL;
+    struct evkeyvalq params;
+    const char *metric_name;
+
+    if (query)
+    {
+        memset(&params, 0, sizeof(params));
+
+        if (evhttp_parse_query_str(query, &params) == 0)
+        {
+            metric_name = evhttp_find_header(&params,"series");
+            if (metric_name != NULL)
+            {
+                printf("query is for %s\n", metric_name);
+                mh = metrics_find_metric(m,metric_name);
+            }
+        }
+
+        evhttp_clear_headers(&params);
+    }
+
+    return mh;
+}
+
+
+static const char * json_escape(const char *str)
+{
+    return str;
+}
+
+static int http_format_metric_error_response(struct evbuffer *evb, const char *error_message)
+{
+    evbuffer_add_printf(evb, "{\"error\":\"%s\"}",error_message);
+    return S_OK;
+}
+
+
+#define SERIES_WRAP(p,len) (((p)+(len))%(len))
+
+static int http_format_metric_response(struct evbuffer *evb, struct metric_history *mh)
+{
+    struct hist_file *h;
+    struct sample *series = NULL;
+    int series_index, series_len, series_head, start, i;
+
+    h = mh->h;
+
+    /* TODO: select which series to get based on the request time frame */
+    series_index = 0;
+    if (hist_file_get_series(h, series_index, &series, &series_len, &series_head) != S_OK)
+    {
+        http_format_metric_error_response(evb,"cannot load metric data");
+    }
+    else
+    {
+        evbuffer_add_printf(evb, "{\"metric\":\"%s\",", json_escape(mh->name));
+        evbuffer_add_printf(evb, "\"results\":[");
+        for (i = start = SERIES_WRAP(series_head-1,series_len); i != series_head; i = SERIES_WRAP(i-1,series_len))
+        {
+            evbuffer_add_printf(evb,"%s[%d,%lld]", ((i == start) ? "" : ","), series[i].sample_time, series[i].value);
+        }
+        evbuffer_add_printf(evb, "]}\n");
+    }
+
+    return S_OK;
+}
+
+static void http_metrics_request_cb(struct evhttp_request *req, void *arg)
+{
+    struct http *http = (struct http *)arg;
     struct evbuffer *evb = NULL;
     const char *uri = NULL;
     struct evhttp_uri *decoded = NULL;
     const char *query;
+    struct metric_history *mh;
 
     uri = evhttp_request_get_uri(req);
 
@@ -69,21 +151,27 @@ static void http_data_request_cb(struct evhttp_request *req, void *arg)
     decoded = evhttp_uri_parse(uri);
     if (!decoded)
     {
-        printf("It's not a good URI. Sending BADREQUEST\n");
         evhttp_send_error(req, HTTP_BADREQUEST, 0);
-        return;
+        goto exit;
     }
 
     query = evhttp_uri_get_query(decoded);
 
-    printf("Process %d: data request %s\n", getpid(), query ? query : "null");
+    printf("metrics request %s\n", query ? query : "null");
 
     /* This holds the content we're sending. */
     evb = evbuffer_new();
 
-    /* generate the response */
-    evbuffer_add_printf(evb, "{\"results\":[");
-    evbuffer_add_printf(evb, "]}\n");
+    mh = http_find_metrics_from_query(http->metrics, query);
+    if (!mh)
+    {
+        printf("Series not found in query: %s\n", query);
+        http_format_metric_error_response(evb, "metric not found");
+    }
+    else
+    {
+        http_format_metric_response(evb,mh);
+    }
 
     /* add headers */
     evhttp_add_header(evhttp_request_get_output_headers(req), "Content-Type", "application/json");
@@ -91,6 +179,7 @@ static void http_data_request_cb(struct evhttp_request *req, void *arg)
     /* send the response */
     evhttp_send_reply(req, 200, "OK", evb);
 
+exit:
     if (decoded)
         evhttp_uri_free(decoded);
 
@@ -98,7 +187,7 @@ static void http_data_request_cb(struct evhttp_request *req, void *arg)
         evbuffer_free(evb);
 }
 
-static void send_document_cb(struct evhttp_request *req, void *arg)
+static void http_document_request_cb(struct evhttp_request *req, void *arg)
 {
     struct evbuffer *evb = NULL;
     struct http *http = (struct http *) arg;
@@ -118,13 +207,12 @@ static void send_document_cb(struct evhttp_request *req, void *arg)
         return;
     }
 
-    printf("Got a GET request for <%s>\n",  uri);
+    printf("GET: %s\n",  uri);
 
     /* Decode the URI */
     decoded = evhttp_uri_parse(uri);
     if (!decoded)
     {
-        printf("It's not a good URI. Sending BADREQUEST\n");
         evhttp_send_error(req, HTTP_BADREQUEST, 0);
         return;
     }
@@ -148,11 +236,10 @@ static void send_document_cb(struct evhttp_request *req, void *arg)
     len = strlen(decoded_path) + strlen(docroot) + 2;
     if (!(whole_path = malloc(len)))
     {
-        perror("malloc");
         goto err;
     }
 
-    evutil_snprintf(whole_path, len, "%s/%s", docroot, decoded_path);
+    snprintf(whole_path, len, "%s/%s", docroot, decoded_path);
 
     if (stat(whole_path, &st) < 0)
     {
@@ -164,6 +251,7 @@ static void send_document_cb(struct evhttp_request *req, void *arg)
 
     if (S_ISDIR(st.st_mode))
     {
+        /* TODO: send index.html if the request is for a directory */
         goto err;
     }
     else
@@ -173,7 +261,6 @@ static void send_document_cb(struct evhttp_request *req, void *arg)
         const char *type = guess_content_type(decoded_path);
         if ((fd = open(whole_path, O_RDONLY)) < 0)
         {
-            perror("open");
             goto err;
         }
 
@@ -181,13 +268,13 @@ static void send_document_cb(struct evhttp_request *req, void *arg)
         {
             /* Make sure the length still matches, now that we
              * opened the file :/ */
-            perror("fstat");
             goto err;
         }
 
-        evhttp_add_header(evhttp_request_get_output_headers(req),
-            "Content-Type", type);
+        evhttp_add_header(evhttp_request_get_output_headers(req), "Content-Type", type);
 
+        /* TODO: does this read the whole thing into memory??  well, we are only going to be
+         * serving small files out of the static content directory, so its probably OK. */
         evbuffer_add_file(evb, fd, 0, st.st_size);
     }
 
@@ -217,6 +304,7 @@ int http_init(struct http* http, struct event_base *base, struct metrics *metric
 {
     char workdir[256];
     char docroot[256];
+    char listen_addr[256];
 
     memset(http, 0, sizeof(struct http));
 
@@ -236,15 +324,69 @@ int http_init(struct http* http, struct event_base *base, struct metrics *metric
         return ERROR_FAIL;
     }
 
-    evhttp_set_cb(http->http, "/data", http_data_request_cb, http);
+    evhttp_set_cb(http->http, "/metrics", http_metrics_request_cb, http);
+    evhttp_set_cb(http->http, "/list", http_list_request_cb, http);
 
-    evhttp_set_gencb(http->http, send_document_cb, http);
+    evhttp_set_gencb(http->http, http_document_request_cb, http);
 
     /* Now we tell the evhttp what port to listen on */
     http->handle = evhttp_bind_socket_with_handle(http->http, "0.0.0.0", http->port);
     if (!http->handle)
     {
         printf("couldn't bind to http port %d.\n", (int)http->port);
+        return ERROR_FAIL;
+    }
+
+    if (http_get_address(http, listen_addr, sizeof(listen_addr)) == S_OK)
+        printf("http: listening at %s\n", listen_addr);
+
+    return S_OK;
+}
+
+
+static int http_get_address(struct http* http, char *buffer, int buflen)
+{
+    /* Extract and display the address we're listening on. */
+    struct sockaddr_storage ss;
+    evutil_socket_t fd;
+    ev_socklen_t socklen = sizeof(ss);
+    char addrbuf[128];
+    void *inaddr;
+    const char *addr;
+    int got_port = -1;
+
+    memset(&ss, 0, sizeof(ss));
+
+    fd = evhttp_bound_socket_get_fd(http->handle);
+    if (getsockname(fd, (struct sockaddr *)&ss, &socklen))
+    {
+        return ERROR_FAIL;
+    }
+
+    if (ss.ss_family == AF_INET)
+    {
+        got_port = ntohs(((struct sockaddr_in*)&ss)->sin_port);
+        inaddr = &((struct sockaddr_in*)&ss)->sin_addr;
+    }
+    else if (ss.ss_family == AF_INET6)
+    {
+        got_port = ntohs(((struct sockaddr_in6*)&ss)->sin6_port);
+        inaddr = &((struct sockaddr_in6*)&ss)->sin6_addr;
+    }
+    else
+    {
+        fprintf(stderr, "Unexpected address family %d\n", ss.ss_family);
+        return ERROR_FAIL;
+    }
+
+    addr = evutil_inet_ntop(ss.ss_family, inaddr, addrbuf, sizeof(addrbuf));
+    if (addr)
+    {
+        evutil_snprintf(buffer, buflen, "http://%s:%d", addr,got_port);
+    }
+    else
+    {
+        fprintf(stderr, "evutil_inet_ntop failed\n");
         return ERROR_FAIL;
     }
 

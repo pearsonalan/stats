@@ -66,6 +66,7 @@ int hist_file_validate(struct hist_file *h);
 int *hist_series_lengths(struct hist_file *h);
 int *hist_series_heads(struct hist_file *h);
 int hist_file_size(struct hist_file *h);
+int hist_file_get_series(struct hist_file *h, int index, struct sample **series_out, int *series_len_out, int *series_head_out);
 
 
 struct metric_history
@@ -93,6 +94,7 @@ struct metrics
 int metrics_alloc(struct metrics **m_out);
 int metrics_free(struct metrics *m);
 int metrics_process_update_message(struct metrics *m, char *buffer, int msglen);
+struct metric_history * metrics_find_metric(struct metrics *m, const char * metric_name);
 
 #endif
 

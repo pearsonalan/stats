@@ -17,7 +17,7 @@ SEM_TEST_OBJS =		$(OBJDIR)/sem_test.o
 LOCK_TEST_OBJS =	$(OBJDIR)/lock_test.o
 KEYSTATS_OBJS = 	$(OBJDIR)/keystats.o $(OBJDIR)/screenutil.o
 STATSVIEW_OBJS = 	$(OBJDIR)/statsview.o $(OBJDIR)/screenutil.o
-HISTD_OBJS =		$(OBJDIR)/histd.o
+HISTD_OBJS =		$(OBJDIR)/histd.o $(OBJDIR)/http.o
 HISTD_CLIENT_OBJS =	$(OBJDIR)/histd_client.o
 
 TESTS = 		$(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/stats_test

@@ -9,9 +9,9 @@
 #include <sys/wait.h>
 #include <assert.h>
 
-#include "stats.h"
-#include "error.h"
-#include "debug.h"
+#include "stats/stats.h"
+#include "stats/error.h"
+#include "stats/debug.h"
 
 const char * counter_names[] = {
     "backed",

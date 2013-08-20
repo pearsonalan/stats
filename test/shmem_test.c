@@ -3,9 +3,9 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include "error.h"
-#include "shared_mem.h"
-#include "semaphore.h"
+#include "stats/error.h"
+#include "stats/shared_mem.h"
+#include "stats/semaphore.h"
 #include <libkern/OSAtomic.h>
 
 #define DPRINTF if (DEBUG) printf

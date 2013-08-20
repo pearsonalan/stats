@@ -7,9 +7,9 @@
 #include <time.h>
 #include <sys/wait.h>
 
-#include "error.h"
-#include "stats.h"
-#include "semaphore.h"
+#include "stats/error.h"
+#include "stats/stats.h"
+#include "stats/semaphore.h"
 
 #define DPRINTF  if (DEBUG) printf
 #define NWORKERS 2

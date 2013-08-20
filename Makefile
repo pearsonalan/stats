@@ -24,18 +24,26 @@ TESTS = 		$(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/
 TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/keystats $(BINDIR)/histd_client
 DAEMONS =		$(BINDIR)/histd
 
-.PHONY: rubyext
+ifeq ($(INSTALLDIR),)
+  INSTALLDIR = 		/usr/local
+endif
 
-all: $(OBJDIR) $(BINDIR) $(STATSLIB) $(TESTS) $(TOOLS) $(DAEMONS) # rubyext
+.PHONY: rubyext all build install
+
+all: build
 
 clean:
 	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS) $(TOOLS)
 	-rmdir $(OBJDIR)
 	-rmdir $(BINDIR)
 
-install:
-	/usr/bin/install include/stats/*.h /usr/local/include/stats/
-	/usr/bin/install $(STATSLIB) /usr/local/lib
+build: $(OBJDIR) $(BINDIR) $(STATSLIB) $(TESTS) $(TOOLS) $(DAEMONS) # rubyext
+
+install: build
+	mkdir -p $(INSTALLDIR)/include/stats
+	/usr/bin/install include/stats/*.h $(INSTALLDIR)/include/stats/
+	mkdir -p $(INSTALLDIR)/lib
+	/usr/bin/install $(STATSLIB) $(INSTALLDIR)/lib
 
 rubyext:
 	cd ruby && make

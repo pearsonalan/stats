@@ -8,8 +8,8 @@
 #include <time.h>
 #include <ctype.h>
 
-#include "stats.h"
-#include "error.h"
+#include "stats/stats.h"
+#include "stats/error.h"
 #include "screenutil.h"
 
 #define MIN(a,b) ((a)<(b)?(a):(b))

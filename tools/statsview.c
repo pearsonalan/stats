@@ -8,8 +8,8 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "stats.h"
-#include "error.h"
+#include "stats/stats.h"
+#include "stats/error.h"
 #include "screenutil.h"
 
 int signal_received = 0;

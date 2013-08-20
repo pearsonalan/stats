@@ -5,8 +5,8 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include "error.h"
-#include "lock.h"
+#include "stats/error.h"
+#include "stats/lock.h"
 #include <errno.h>
 
 #define DPRINTF if (DEBUG) printf

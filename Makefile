@@ -41,7 +41,8 @@ build: $(OBJDIR) $(BINDIR) $(STATSLIB) $(TESTS) $(TOOLS) $(DAEMONS) # rubyext
 
 install: build
 	mkdir -p $(INSTALLDIR)/include/stats
-	/usr/bin/install include/stats/*.h $(INSTALLDIR)/include/stats/
+	/usr/bin/cp include/stats/*.h $(INSTALLDIR)/include/stats/
+	/usr/bin/cp ext/*.h $(INSTALLDIR)/include/
 	mkdir -p $(INSTALLDIR)/lib
 	/usr/bin/install $(STATSLIB) $(INSTALLDIR)/lib
 

@@ -37,7 +37,7 @@ endif
 all: build
 
 clean:
-	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS) $(TOOLS)
+	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS) $(TOOLS) $(DAEMONS)
 	-rmdir $(OBJDIR)
 	-rmdir $(BINDIR)
 

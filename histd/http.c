@@ -57,13 +57,57 @@ not_found:
     return "application/octet-stream";
 }
 
+static int http_format_error_response(struct evbuffer *evb, const char *error_message)
+{
+    evbuffer_add_printf(evb, "{\"error\":\"%s\"}",error_message);
+    return S_OK;
+}
+
+static int http_format_list_response(struct evbuffer *evb)
+{
+    evbuffer_add_printf(evb, "{\"result\":\"OK\"}");
+    return S_OK;
+}
+
 static void http_list_request_cb(struct evhttp_request *req, void *arg)
 {
     // struct http *http = (struct http *)arg;
-    // struct evbuffer *evb = NULL;
+    struct evbuffer *evb = NULL;
+    const char *uri = NULL;
+    struct evhttp_uri *decoded = NULL;
+    const char *query;
 
-    printf("list request\n");
+    uri = evhttp_request_get_uri(req);
 
+    /* Decode the URI */
+    decoded = evhttp_uri_parse(uri);
+    if (!decoded)
+    {
+        evhttp_send_error(req, HTTP_BADREQUEST, 0);
+        goto exit;
+    }
+
+    query = evhttp_uri_get_query(decoded);
+
+    printf("list request %s\n", query ? query : "null");
+
+    /* This holds the content we're sending. */
+    evb = evbuffer_new();
+
+    http_format_list_response(evb);
+
+    /* add headers */
+    evhttp_add_header(evhttp_request_get_output_headers(req), "Content-Type", "application/json");
+
+    /* send the response */
+    evhttp_send_reply(req, 200, "OK", evb);
+
+exit:
+    if (decoded)
+        evhttp_uri_free(decoded);
+
+    if (evb)
+        evbuffer_free(evb);
 
 }
 
@@ -99,12 +143,6 @@ static const char * json_escape(const char *str)
     return str;
 }
 
-static int http_format_metric_error_response(struct evbuffer *evb, const char *error_message)
-{
-    evbuffer_add_printf(evb, "{\"error\":\"%s\"}",error_message);
-    return S_OK;
-}
-
 
 #define SERIES_WRAP(p,len) (((p)+(len))%(len))
 
@@ -120,7 +158,7 @@ static int http_format_metric_response(struct evbuffer *evb, struct metric_histo
     series_index = 0;
     if (hist_file_get_series(h, series_index, &series, &series_len, &series_head) != S_OK)
     {
-        http_format_metric_error_response(evb,"cannot load metric data");
+        http_format_error_response(evb,"cannot load metric data");
     }
     else
     {
@@ -166,7 +204,7 @@ static void http_metrics_request_cb(struct evhttp_request *req, void *arg)
     if (!mh)
     {
         printf("Series not found in query: %s\n", query);
-        http_format_metric_error_response(evb, "metric not found");
+        http_format_error_response(evb, "metric not found");
     }
     else
     {
@@ -308,13 +346,17 @@ int http_init(struct http* http, struct event_base *base, struct metrics *metric
 
     memset(http, 0, sizeof(struct http));
 
-    http->port = 4000;
     http->metrics = metrics;
 
+    /* TODO: read port from config file */
+    http->port = 4000;
+
+    /* TODO: read docroot from config file */
     getcwd(workdir,sizeof(workdir));
     snprintf(docroot, sizeof(docroot), "%s/docroot", workdir);
-
     http->docroot = strdup(docroot);
+
+    /* TODO: should also read a bind address */
 
     /* Create a new evhttp object to handle requests. */
     http->http = evhttp_new(base);

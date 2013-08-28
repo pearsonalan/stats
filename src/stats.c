@@ -217,7 +217,7 @@ int stats_allocate_counter(struct stats *stats, const char *name, struct stats_c
 
     *ctr_out = ctr;
 
-    assert(*ctr_out != NULL && err == S_OK || *ctr_out == NULL && err != S_OK);
+    assert((*ctr_out != NULL && err == S_OK) || (*ctr_out == NULL && err != S_OK));
 
     return err;
 }

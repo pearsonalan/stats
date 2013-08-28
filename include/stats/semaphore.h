@@ -20,6 +20,16 @@ struct semaphore {
     int semid;
 };
 
+#ifdef LINUX
+union semun {
+    int              val;    /* Value for SETVAL */
+    struct semid_ds *buf;    /* Buffer for IPC_STAT, IPC_SET */
+    unsigned short  *array;  /* Array for GETALL, SETALL */
+    struct seminfo  *__buf;  /* Buffer for IPC_INFO
+                                (Linux-specific) */
+};
+#endif
+
 int semaphore_create(const char *name, unsigned short size, struct semaphore **sem_out);
 int semaphore_init(struct semaphore *sem, const char *name, unsigned short size);
 int semaphore_open(struct semaphore *sem, int flags);

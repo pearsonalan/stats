@@ -11,6 +11,10 @@ STATSLIB =		$(OBJDIR)/libstats.a
 LIB_OBJS =		$(OBJDIR)/stats.o $(OBJDIR)/shared_mem.o $(OBJDIR)/semaphore.o \
 			$(OBJDIR)/lock.o $(OBJDIR)/error.o $(OBJDIR)/hash.o
 
+ifeq ($(OSTYPE),LINUX)
+  LIB_OBJS += $(OBJDIR)/strlcpy.o $(OBJDIR)/strlcat.o
+endif
+
 STATS_TEST_OBJS =	$(OBJDIR)/stats_test.o
 SHMEM_TEST_OBJS =	$(OBJDIR)/shmem_test.o
 SEM_TEST_OBJS =		$(OBJDIR)/sem_test.o

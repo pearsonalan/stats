@@ -6,6 +6,11 @@
 #include "shared_mem.h"
 #include "lock.h"
 
+#ifdef LINUX
+size_t strlcat(char *dst, const char *src, size_t siz);
+size_t strlcpy(char *dst, const char *src, size_t siz);
+#endif
+
 #define STATS_MAGIC   'stat'
 
 

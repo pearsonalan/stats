@@ -21,7 +21,11 @@ int run_test(int pidx)
     int i;
     int pid;
 
+#ifdef DARWIN
     srandomdev();
+#else
+    srand(time(0));
+#endif
 
     pid = getpid();
     res = lock_init(&lock,"locktest");

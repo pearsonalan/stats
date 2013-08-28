@@ -166,7 +166,7 @@ static int http_format_metric_response(struct evbuffer *evb, struct metric_histo
         evbuffer_add_printf(evb, "\"results\":[");
         for (i = start = SERIES_WRAP(series_head-1,series_len); i != series_head; i = SERIES_WRAP(i-1,series_len))
         {
-            evbuffer_add_printf(evb,"%s[%d,%lld]", ((i == start) ? "" : ","), series[i].sample_time, series[i].value);
+            evbuffer_add_printf(evb,"%s[%d,%lld]", ((i == start) ? "" : ","), series[i].sample_time, (long long) series[i].value);
         }
         evbuffer_add_printf(evb, "]}\n");
     }

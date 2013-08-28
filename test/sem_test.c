@@ -76,7 +76,6 @@ int run_test(int pidx)
 
 int main()
 {
-    int pids[NWORKERS];
     int i, n;
 
     for (i = 0; i < NWORKERS; i++)
@@ -98,7 +97,6 @@ int main()
         else
         {
             printf("Launched pid %d\n", n);
-            pids[i] = n;
         }
     }
 

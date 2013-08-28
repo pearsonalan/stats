@@ -5,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <dirent.h>
+#include <time.h>
 
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -265,6 +266,8 @@ int metric_history_open(struct metric_history *mh, char * path)
         new_file = 0;
     }
 
+    (void) new_file;
+
     printf("mapping metric history file (%d bytes) ...\n", map_size);
     pv = mmap(NULL,map_size,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
     if (pv == NULL)
@@ -491,7 +494,7 @@ static int metrics_store_metric(struct metrics *m, uint32_t timestamp, char *met
     int k;
     struct metric_history *mh;
 
-    printf("  %s: %llu\n", metric_name, metric_value);
+    printf("  %s: %llu\n", metric_name, (unsigned long long)metric_value);
 
     k = metrics_hash_probe(m,metric_name,strlen(metric_name));
     printf("    key=%d\n",k);
@@ -546,6 +549,8 @@ int metrics_process_update_message(struct metrics *m, char *buffer, int msglen)
     {
         metrics_store_metric(m, msg->timestamp, msg->metrics[i].metric_name, ntohll(msg->metrics[i].metric_value));
     }
+
+    (void)hdr;
 
     return S_OK;
 }

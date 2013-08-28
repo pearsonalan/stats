@@ -69,6 +69,7 @@ int main(int argc, char **argv)
 
     init_screen();
     getmaxyx(stdscr,rows,cols);
+    (void) cols;
 
     while (!signal_received && (c = wgetch(stdscr)) != ERR)
     {

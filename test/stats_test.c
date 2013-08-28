@@ -180,7 +180,6 @@ int reader(int n)
 
 int main(int argc, char **argv)
 {
-    int pids[NWORKERS];
     int i, n;
 
     for (i = 0; i < NWORKERS; i++)
@@ -205,7 +204,6 @@ int main(int argc, char **argv)
         else
         {
             printf("Launched pid %d\n", n);
-            pids[i] = n;
         }
     }
 

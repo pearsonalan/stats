@@ -15,6 +15,11 @@
 
 #include <unistd.h>
 
+#ifdef LINUX
+size_t strlcat(char *dst, const char *src, size_t siz);
+size_t strlcpy(char *dst, const char *src, size_t siz);
+#endif
+
 #include "histd/protocol.h"
 
 uint64_t htonll(uint64_t ll)

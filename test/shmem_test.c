@@ -6,6 +6,8 @@
 #include "stats/error.h"
 #include "stats/shared_mem.h"
 #include "stats/semaphore.h"
+
+#ifdef DARWIN
 #include <libkern/OSAtomic.h>
 
 #define DPRINTF if (DEBUG) printf
@@ -245,4 +247,13 @@ int main(int argc, char **argv)
     return basic_test();
 }
 
+#else
+
+int main()
+{
+    printf("test does not work on this platform\n");
+    return 0;
+}
+
+#endif
 

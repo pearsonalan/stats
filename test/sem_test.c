@@ -23,7 +23,11 @@ int run_test(int pidx)
     int i;
     int pid;
 
+#ifdef DARWIN
     srandomdev();
+#else
+    srand(time(0));
+#endif
 
     pid = getpid();
     res = semaphore_create("semtest", 1, &sem);

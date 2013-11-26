@@ -71,7 +71,8 @@ endif
 
 ifeq ($(OSTYPE),Linux)
   CC = gcc
-  CFLAGS += -DLINUX -Wno-multichar
+  CFLAGS += -DLINUX -Wno-multichar -fPIC
+  LINKFLAGS += -fPIC
 endif
 
 LIBFLAGS =        -Lobj -lstats

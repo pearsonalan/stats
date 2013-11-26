@@ -1,7 +1,7 @@
 require 'mkmf'
 require 'rbconfig'
 
-$CFLAGS << ' -Wall'
+$CFLAGS << ' -Wall -Wno-multichar'
 $CFLAGS << ' -Wextra -O0 -ggdb3' if ENV['DEBUG']
 
 find_header('stats/stats.h') or abort "Can't find the stats.h header"

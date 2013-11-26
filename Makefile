@@ -1,5 +1,5 @@
 OSTYPE = $(shell uname -s)
-DEBUG = 1
+DEBUG = 0
 
 # $(info OSTYPE = $(OSTYPE))
 
@@ -34,7 +34,7 @@ endif
 
 .PHONY: rubyext all build install
 
-all: build
+all: build rubyext
 
 clean:
 	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS) $(TOOLS) $(DAEMONS)

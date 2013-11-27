@@ -34,7 +34,7 @@ endif
 
 .PHONY: rubyext all build install
 
-all: build rubyext
+all: build
 
 clean:
 	-rm $(OBJDIR)/*.o $(STATSLIB) $(TESTS) $(TOOLS) $(DAEMONS)

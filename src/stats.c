@@ -16,13 +16,13 @@ static void stats_init_data(struct stats *stats);
 static int stats_hash_probe(struct stats_data *data, const char *key, int len);
 
 
-static long long current_time()
+long long current_time()
 {
     struct timeval tv;
 
     gettimeofday(&tv,NULL);
 
-    return (long long) tv.tv_sec + ((long long) tv.tv_usec / 1000ll);
+    return (long long)tv.tv_sec * 1000000ll + (long long)tv.tv_usec;
 }
 
 /*
@@ -503,3 +503,12 @@ void counter_increment(struct stats_counter *ctr)
         __sync_fetch_and_add_8(&ctr->ctr_value.val64,1);
     }
 }
+
+void counter_increment_by(struct stats_counter *ctr, long long val)
+{
+    if (ctr != NULL)
+    {
+        __sync_fetch_and_add(&ctr->ctr_value.val64,val);
+    }
+}
+

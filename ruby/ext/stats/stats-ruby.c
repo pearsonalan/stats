@@ -7,8 +7,9 @@
 #include "stats/stats.h"
 #include "stats/hash.h"
 
-static VALUE stats_class;
-static VALUE ctr_class;
+static VALUE stats_class = Qnil;
+static VALUE ctr_class = Qnil;
+static VALUE tmr_class = Qnil;
 
 #define STATS_MAGIC  'stat'
 #define CTR_MAGIC    'ctr '
@@ -32,6 +33,9 @@ struct rbstats
 
 static VALUE rbctr_alloc(struct stats_counter *counter);
 static void rbctr_free(void *p);
+
+static VALUE rbtmr_alloc(struct stats_counter *counter);
+static void rbtmr_free(void *p);
 
 
 static int hash_probe(struct rbstats *stats, const char *key, long len)
@@ -199,6 +203,51 @@ static VALUE rbstats_get(VALUE self, VALUE rbkey)
 }
 
 
+static VALUE rbstats_get_tmr(VALUE self, VALUE rbkey)
+{
+    struct rbstats *stats;
+    char *key;
+    int idx, keylen;
+    struct stats_counter *counter = NULL;
+    VALUE ret = Qnil;
+
+    Check_Type(rbkey, T_STRING);
+
+    key = RSTRING_PTR(rbkey);
+    keylen = RSTRING_LEN(rbkey);
+
+    Data_Get_Struct(self, struct rbstats, stats);
+    assert(stats->magic == STATS_MAGIC);
+
+    idx = hash_probe(stats,key,keylen);
+    if (idx != -1)
+    {
+        counter = stats->tbl[idx].ctr;
+        if (counter == NULL)
+        {
+            if (stats_allocate_counter(stats->stats,key,&counter) == S_OK)
+            {
+                stats->tbl[idx].ctr = counter;
+            }
+            else
+            {
+                /* failed to allocate counter */
+            }
+        }
+
+        if (counter != NULL)
+        {
+            ret = rbtmr_alloc(counter);
+        }
+    }
+    else
+    {
+        /* table is full, can't create a new counter */
+    }
+
+    return ret;
+}
+
 static VALUE rbstats_inc(VALUE self, VALUE rbkey)
 {
     struct rbstats *stats;
@@ -246,6 +295,54 @@ static VALUE rbstats_inc(VALUE self, VALUE rbkey)
 }
 
 
+
+static VALUE rbstats_add(VALUE self, VALUE rbkey, VALUE amt)
+{
+    struct rbstats *stats;
+    char *key;
+    int idx, keylen;
+    struct stats_counter *counter = NULL;
+    VALUE ret = Qnil;
+
+    Check_Type(rbkey, T_STRING);
+    Check_Type(amt,T_FIXNUM);
+
+    key = RSTRING_PTR(rbkey);
+    keylen = RSTRING_LEN(rbkey);
+
+    Data_Get_Struct(self, struct rbstats, stats);
+    assert(stats->magic == STATS_MAGIC);
+
+    idx = hash_probe(stats,key,keylen);
+    if (idx != -1)
+    {
+        counter = stats->tbl[idx].ctr;
+        if (counter == NULL)
+        {
+            if (stats_allocate_counter(stats->stats,key,&counter) == S_OK)
+            {
+                stats->tbl[idx].ctr = counter;
+            }
+            else
+            {
+                /* failed to allocate counter */
+            }
+        }
+
+        if (counter != NULL)
+        {
+            counter_increment_by(counter,FIX2LONG(amt));
+            ret = Qtrue;
+        }
+    }
+    else
+    {
+        /* table is full, can't create a new counter */
+    }
+
+    return ret;
+}
+
 /******************************************************************
  *
  *  Ruby Counter
@@ -270,21 +367,89 @@ VALUE rbctr_inc(VALUE self)
     return self;
 }
 
+VALUE rbctr_add(VALUE self, VALUE amt)
+{
+    struct stats_counter *counter = NULL;
+
+    Check_Type(amt,T_FIXNUM);
+
+    Data_Get_Struct(self, struct stats_counter, counter);
+    counter_increment_by(counter,FIX2LONG(amt));
+    return self;
+}
+
 static void rbctr_free(void *p)
 {
 }
 
 
+
+
+/******************************************************************
+ *
+ *  Ruby Timer
+ *
+ */
+
+struct timer_data
+{
+    struct stats_counter *counter;
+    long long start_time;
+};
+
+static VALUE rbtmr_alloc(struct stats_counter *counter)
+{
+    VALUE tdata;
+    struct timer_data *td;
+
+    td = (struct timer_data *)malloc(sizeof(struct timer_data));
+    td->counter = counter;
+    td->start_time = current_time();
+
+    tdata = Data_Wrap_Struct(tmr_class, 0, rbtmr_free, td);
+
+    return tdata;
+}
+
+VALUE rbtmr_enter(VALUE self)
+{
+    struct timer_data *td;
+
+    Data_Get_Struct(self, struct timer_data, td);
+    td->start_time = current_time();
+
+    return self;
+}
+
+VALUE rbtmr_exit(VALUE self)
+{
+    struct timer_data *td;
+
+    Data_Get_Struct(self, struct timer_data, td);
+    counter_increment_by(td->counter,current_time() - td->start_time);
+    return self;
+}
+
+static void rbtmr_free(void *p)
+{
+    free(p);
+}
+
 void Init_stats()
 {
-    // printf("In Init_stats\n");
     stats_class = rb_define_class("Stats", rb_cObject);
     rb_define_singleton_method(stats_class, "new", rbstats_new, 1);
     rb_define_method(stats_class, "initialize", rbstats_init, 1);
     rb_define_method(stats_class, "get", rbstats_get, 1);
+    rb_define_method(stats_class, "timer", rbstats_get_tmr, 1);
     rb_define_method(stats_class, "inc", rbstats_inc, 1);
+    rb_define_method(stats_class, "add", rbstats_add, 2);
 
     ctr_class = rb_define_class("Counter", rb_cObject);
     rb_define_method(ctr_class, "inc", rbctr_inc, 0);
+    rb_define_method(ctr_class, "add", rbctr_add, 1);
 
+    tmr_class = rb_define_class("Timer", rb_cObject);
+    rb_define_method(tmr_class, "enter", rbtmr_enter, 0);
+    rb_define_method(tmr_class, "exit", rbtmr_exit, 0);
 }

@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 
         clear();
 
-        mvprintw(0,0,"SAMPLE @ %d.%2d  SEQ:%d\n", sample->sample_time / 1000, sample->sample_time % 1000, sample->sample_seq_no);
+        mvprintw(0,0,"SAMPLE @ %lld.%06d  SEQ:%d\n", sample->sample_time / 1000000ll, sample->sample_time % 1000000ll, sample->sample_seq_no);
         mvprintw(1,0,"sample = %016x, prev = %016x, scount = %d, pcount = %d",
                  (intptr_t)sample,(intptr_t)prev_sample, sample->sample_count, prev_sample->sample_count);
 
@@ -120,11 +120,11 @@ int main(int argc, char **argv)
         {
             counter_get_key(cl->cl_ctr[j],counter_name,MAX_COUNTER_KEY_LENGTH+1);
             mvprintw(n,col+0,"%s", counter_name);
-            mvprintw(n,col+33,"%-7lld", stats_sample_get_value(sample,j));
-            mvprintw(n,col+41,"%-7lld", stats_sample_get_delta(sample,prev_sample,j));
+            mvprintw(n,col+33,"%-10lld", stats_sample_get_value(sample,j));
+            mvprintw(n,col+44,"%-10lld", stats_sample_get_delta(sample,prev_sample,j));
             if (++n == maxy)
             {
-                col += 52;
+                col += 58;
                 n = 2;
             }
         }

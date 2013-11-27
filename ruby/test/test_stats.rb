@@ -57,3 +57,31 @@ times = Benchmark.measure do
 end
 
 puts "Counter increment: time = #{times}"
+
+
+
+result = 0
+timer = s.timer("timer")
+times = Benchmark.measure do
+  10_000_000.times do |n|
+    timer.enter
+    result = result + n
+    timer.exit
+  end
+end
+
+puts "Timer: time = #{times}"
+
+
+
+result = 0
+timer = s.get("rtimer")
+times = Benchmark.measure do
+  10_000_000.times do |n|
+    start = Time.now
+    result = result + n
+    timer.add(((Time.now.to_f - start.to_f) * 1000000).to_i)
+  end
+end
+
+puts "Ruby Timer: time = #{times}"

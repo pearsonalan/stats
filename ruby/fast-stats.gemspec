@@ -1,7 +1,7 @@
 require './lib/stats/version'
 
 Gem::Specification.new do |s|
-  s.name = "stats"
+  s.name = "fast-stats"
   s.version = StatsGem::VERSION
   s.authors = ["Alan Pearson"]
   s.date = Time.now.utc.strftime("%Y-%m-%d")

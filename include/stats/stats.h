@@ -191,6 +191,8 @@ int stats_get_sample(struct stats *stats, struct stats_counter_list *cl, struct 
 void counter_get_key(struct stats_counter *ctr, char *buf, int buflen);
 void counter_increment(struct stats_counter *ctr);
 void counter_increment_by(struct stats_counter *ctr, long long val);
+void counter_clear(struct stats_counter *ctr);
+void counter_set(struct stats_counter *ctr, long long val);
 
 #define stats_get_sequence_number(s) ((s)->data->hdr.stats_sequence_number)
 

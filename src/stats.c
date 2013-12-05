@@ -500,7 +500,7 @@ void counter_increment(struct stats_counter *ctr)
 {
     if (ctr != NULL)
     {
-        __sync_fetch_and_add_8(&ctr->ctr_value.val64,1);
+        __sync_fetch_and_add(&ctr->ctr_value.val64,1ll);
     }
 }
 
@@ -512,3 +512,18 @@ void counter_increment_by(struct stats_counter *ctr, long long val)
     }
 }
 
+void counter_clear(struct stats_counter *ctr)
+{
+    if (ctr != NULL)
+    {
+        __sync_lock_test_and_set(&ctr->ctr_value.val64,0ll);
+    }
+}
+
+void counter_set(struct stats_counter *ctr, long long val)
+{
+    if (ctr != NULL)
+    {
+        __sync_lock_test_and_set(&ctr->ctr_value.val64,val);
+    }
+}

@@ -156,22 +156,27 @@ static VALUE rbstats_init(VALUE self, VALUE name)
 }
 
 
-
-static VALUE rbstats_get(VALUE self, VALUE rbkey)
+static struct rbstats *rbstats_get_wrapped_stats(VALUE self)
 {
     struct rbstats *stats;
+
+    Data_Get_Struct(self, struct rbstats, stats);
+    assert(stats != NULL);
+    assert(stats->magic == STATS_MAGIC);
+
+    return stats;
+}
+
+static struct stats_counter *rbstats_get_counter(struct rbstats *stats, VALUE rbkey)
+{
     char *key;
     int idx, keylen;
     struct stats_counter *counter = NULL;
-    VALUE ret = Qnil;
 
     Check_Type(rbkey, T_STRING);
 
     key = RSTRING_PTR(rbkey);
     keylen = RSTRING_LEN(rbkey);
-
-    Data_Get_Struct(self, struct rbstats, stats);
-    assert(stats->magic == STATS_MAGIC);
 
     idx = hash_probe(stats,key,keylen);
     if (idx != -1)
@@ -188,15 +193,29 @@ static VALUE rbstats_get(VALUE self, VALUE rbkey)
                 /* failed to allocate counter */
             }
         }
-
-        if (counter != NULL)
-        {
-            ret = rbctr_alloc(counter);
-        }
     }
     else
     {
         /* table is full, can't create a new counter */
+    }
+
+    return counter;
+}
+
+static VALUE rbstats_get(VALUE self, VALUE rbkey)
+{
+    struct rbstats *stats;
+    struct stats_counter *counter;
+    VALUE ret = Qnil;
+
+    stats = rbstats_get_wrapped_stats(self);
+    if (stats)
+    {
+        counter = rbstats_get_counter(stats, rbkey);
+        if (counter)
+        {
+            ret = rbctr_alloc(counter);
+        }
     }
 
     return ret;
@@ -206,43 +225,17 @@ static VALUE rbstats_get(VALUE self, VALUE rbkey)
 static VALUE rbstats_get_tmr(VALUE self, VALUE rbkey)
 {
     struct rbstats *stats;
-    char *key;
-    int idx, keylen;
-    struct stats_counter *counter = NULL;
+    struct stats_counter *counter;
     VALUE ret = Qnil;
 
-    Check_Type(rbkey, T_STRING);
-
-    key = RSTRING_PTR(rbkey);
-    keylen = RSTRING_LEN(rbkey);
-
-    Data_Get_Struct(self, struct rbstats, stats);
-    assert(stats->magic == STATS_MAGIC);
-
-    idx = hash_probe(stats,key,keylen);
-    if (idx != -1)
+    stats = rbstats_get_wrapped_stats(self);
+    if (stats)
     {
-        counter = stats->tbl[idx].ctr;
-        if (counter == NULL)
-        {
-            if (stats_allocate_counter(stats->stats,key,&counter) == S_OK)
-            {
-                stats->tbl[idx].ctr = counter;
-            }
-            else
-            {
-                /* failed to allocate counter */
-            }
-        }
-
-        if (counter != NULL)
+        counter = rbstats_get_counter(stats, rbkey);
+        if (counter)
         {
             ret = rbtmr_alloc(counter);
         }
-    }
-    else
-    {
-        /* table is full, can't create a new counter */
     }
 
     return ret;
@@ -251,44 +244,18 @@ static VALUE rbstats_get_tmr(VALUE self, VALUE rbkey)
 static VALUE rbstats_inc(VALUE self, VALUE rbkey)
 {
     struct rbstats *stats;
-    char *key;
-    int idx, keylen;
-    struct stats_counter *counter = NULL;
+    struct stats_counter *counter;
     VALUE ret = Qnil;
 
-    Check_Type(rbkey, T_STRING);
-
-    key = RSTRING_PTR(rbkey);
-    keylen = RSTRING_LEN(rbkey);
-
-    Data_Get_Struct(self, struct rbstats, stats);
-    assert(stats->magic == STATS_MAGIC);
-
-    idx = hash_probe(stats,key,keylen);
-    if (idx != -1)
+    stats = rbstats_get_wrapped_stats(self);
+    if (stats)
     {
-        counter = stats->tbl[idx].ctr;
-        if (counter == NULL)
-        {
-            if (stats_allocate_counter(stats->stats,key,&counter) == S_OK)
-            {
-                stats->tbl[idx].ctr = counter;
-            }
-            else
-            {
-                /* failed to allocate counter */
-            }
-        }
-
-        if (counter != NULL)
+        counter = rbstats_get_counter(stats, rbkey);
+        if (counter)
         {
             counter_increment(counter);
             ret = Qtrue;
         }
-    }
-    else
-    {
-        /* table is full, can't create a new counter */
     }
 
     return ret;
@@ -299,49 +266,67 @@ static VALUE rbstats_inc(VALUE self, VALUE rbkey)
 static VALUE rbstats_add(VALUE self, VALUE rbkey, VALUE amt)
 {
     struct rbstats *stats;
-    char *key;
-    int idx, keylen;
-    struct stats_counter *counter = NULL;
+    struct stats_counter *counter;
     VALUE ret = Qnil;
 
-    Check_Type(rbkey, T_STRING);
     Check_Type(amt,T_FIXNUM);
 
-    key = RSTRING_PTR(rbkey);
-    keylen = RSTRING_LEN(rbkey);
-
-    Data_Get_Struct(self, struct rbstats, stats);
-    assert(stats->magic == STATS_MAGIC);
-
-    idx = hash_probe(stats,key,keylen);
-    if (idx != -1)
+    stats = rbstats_get_wrapped_stats(self);
+    if (stats)
     {
-        counter = stats->tbl[idx].ctr;
-        if (counter == NULL)
-        {
-            if (stats_allocate_counter(stats->stats,key,&counter) == S_OK)
-            {
-                stats->tbl[idx].ctr = counter;
-            }
-            else
-            {
-                /* failed to allocate counter */
-            }
-        }
-
-        if (counter != NULL)
+        counter = rbstats_get_counter(stats, rbkey);
+        if (counter)
         {
             counter_increment_by(counter,FIX2LONG(amt));
             ret = Qtrue;
         }
     }
-    else
+
+    return ret;
+}
+
+static VALUE rbstats_set(VALUE self, VALUE rbkey, VALUE amt)
+{
+    struct rbstats *stats;
+    struct stats_counter *counter;
+    VALUE ret = Qnil;
+
+    Check_Type(amt,T_FIXNUM);
+
+    stats = rbstats_get_wrapped_stats(self);
+    if (stats)
     {
-        /* table is full, can't create a new counter */
+        counter = rbstats_get_counter(stats, rbkey);
+        if (counter)
+        {
+            counter_set(counter,FIX2LONG(amt));
+            ret = Qtrue;
+        }
     }
 
     return ret;
 }
+
+static VALUE rbstats_clr(VALUE self, VALUE rbkey)
+{
+    struct rbstats *stats;
+    struct stats_counter *counter;
+    VALUE ret = Qnil;
+
+    stats = rbstats_get_wrapped_stats(self);
+    if (stats)
+    {
+        counter = rbstats_get_counter(stats, rbkey);
+        if (counter)
+        {
+            counter_clear(counter);
+            ret = Qtrue;
+        }
+    }
+
+    return ret;
+}
+
 
 /******************************************************************
  *
@@ -375,6 +360,26 @@ VALUE rbctr_add(VALUE self, VALUE amt)
 
     Data_Get_Struct(self, struct stats_counter, counter);
     counter_increment_by(counter,FIX2LONG(amt));
+    return self;
+}
+
+VALUE rbctr_clr(VALUE self)
+{
+    struct stats_counter *counter = NULL;
+
+    Data_Get_Struct(self, struct stats_counter, counter);
+    counter_clear(counter);
+    return self;
+}
+
+VALUE rbctr_set(VALUE self, VALUE amt)
+{
+    struct stats_counter *counter = NULL;
+
+    Check_Type(amt,T_FIXNUM);
+
+    Data_Get_Struct(self, struct stats_counter, counter);
+    counter_set(counter,FIX2LONG(amt));
     return self;
 }
 
@@ -444,10 +449,14 @@ void Init_stats()
     rb_define_method(stats_class, "timer", rbstats_get_tmr, 1);
     rb_define_method(stats_class, "inc", rbstats_inc, 1);
     rb_define_method(stats_class, "add", rbstats_add, 2);
+    rb_define_method(stats_class, "set", rbstats_set, 2);
+    rb_define_method(stats_class, "clr", rbstats_clr, 1);
 
     ctr_class = rb_define_class("Counter", rb_cObject);
     rb_define_method(ctr_class, "inc", rbctr_inc, 0);
     rb_define_method(ctr_class, "add", rbctr_add, 1);
+    rb_define_method(ctr_class, "set", rbctr_set, 1);
+    rb_define_method(ctr_class, "clr", rbctr_clr, 0);
 
     tmr_class = rb_define_class("Timer", rb_cObject);
     rb_define_method(tmr_class, "enter", rbtmr_enter, 0);

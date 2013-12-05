@@ -6,7 +6,7 @@ all: build
 
 build:
 	gem build fast-stats.gemspec
-	gem install fast-stats-1.1.gem
+	gem install fast-stats-1.2.gem
 
 test:
 	ruby ./test/test_stats.rb

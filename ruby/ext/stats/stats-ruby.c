@@ -141,7 +141,6 @@ VALUE rbstats_new(VALUE class, VALUE name)
 static VALUE rbstats_init(VALUE self, VALUE name)
 {
     struct rbstats *stats;
-    VALUE ret = Qnil;
 
     Check_Type(name, T_STRING);
     Data_Get_Struct(self, struct rbstats, stats);

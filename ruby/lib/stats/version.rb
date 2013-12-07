@@ -1,3 +1,3 @@
 module StatsGem
-  VERSION = '1.2'
+  VERSION = '1.6'
 end

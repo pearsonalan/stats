@@ -7,6 +7,8 @@ Gem::Specification.new do |s|
   s.date = Time.now.utc.strftime("%Y-%m-%d")
   s.extensions = ["ext/stats/extconf.rb"]
   s.files = `git ls-files .`.split("\n")
+  s.files += `find ext -name *.c`.split("\n")
+  s.files += `find ext -name *.h`.split("\n")
   s.require_paths = ["lib"]
   s.test_files = `git ls-files spec examples`.split("\n")
   s.required_ruby_version = ">= 1.9.3"

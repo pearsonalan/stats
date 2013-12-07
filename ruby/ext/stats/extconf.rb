@@ -4,6 +4,9 @@ require 'rbconfig'
 $CFLAGS << ' -Wall -Wno-multichar'
 $CFLAGS << ' -Wextra -O0 -ggdb3' if ENV['DEBUG']
 
-find_header('stats/stats.h') or abort "Can't find the stats.h header"
-have_library('stats','fast_hash') && append_library($libs,'stats')
+$CFLAGS << ' -DDEBUG=1' if ENV['DEBUG']
+$CFLAGS << ' -DDEBUG=0' unless ENV['DEBUG']
+
+$CFLAGS << ' -DLINUX' if /linux/i =~ `uname -a`
+
 create_makefile('stats/stats')

@@ -146,10 +146,6 @@ static VALUE rbstats_init(VALUE self, VALUE name)
     Data_Get_Struct(self, struct rbstats, stats);
 
     stats->stats = open_stats(RSTRING_PTR(name));
-    if (stats->stats != NULL)
-    {
-        ret = self;
-    }
 
     return self;
 }

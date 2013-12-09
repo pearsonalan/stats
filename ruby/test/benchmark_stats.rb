@@ -75,6 +75,20 @@ puts "Timer: time = #{times}"
 
 
 result = 0
+timer = s.timer("btimer")
+times = Benchmark.measure do
+  10_000_000.times do |n|
+    timer.time do
+      result = result + n
+    end
+  end
+end
+
+puts "Timer with block: time = #{times}"
+
+
+
+result = 0
 timer = s.get("rtimer")
 times = Benchmark.measure do
   10_000_000.times do |n|

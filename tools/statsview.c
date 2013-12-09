@@ -15,14 +15,14 @@
 
 int signal_received = 0;
 
-static unsigned long long msleep(unsigned long long millisec)
+static unsigned long long nsleep(unsigned long long nsec)
 {
-    struct timespec t = {0};
-    t.tv_sec= millisec/1000;
-    t.tv_nsec= (millisec%1000) * 1000000;
+    struct timespec t;
+    t.tv_sec= nsec/1000000000ll;
+    t.tv_nsec= nsec%1000000000ll;
     if (nanosleep(&t,&t) != -1)
-        return millisec;
-    return millisec - ((unsigned long long)t.tv_sec*1000 + t.tv_nsec/1000000);
+        return nsec;
+    return nsec - ((unsigned long long)t.tv_sec*1000000000ll + t.tv_nsec);
 }
 
 static void sigfunc(int sig_no)
@@ -61,6 +61,7 @@ int main(int argc, char **argv)
     struct sigaction sa;
     char counter_name[MAX_COUNTER_KEY_LENGTH+1];
     int j, err, n, maxy, col;
+    long long start_time, sample_time, now;
 
     if (argc != 2)
     {
@@ -99,6 +100,8 @@ int main(int argc, char **argv)
 
     init_screen();
 
+    start_time = current_time();
+
     while (!signal_received)
     {
         err = stats_get_sample(stats,cl,sample);
@@ -109,7 +112,9 @@ int main(int argc, char **argv)
 
         clear();
 
-        mvprintw(0,0,"SAMPLE @ %lld.%06d  SEQ:%d\n", sample->sample_time / 1000000ll, sample->sample_time % 1000000ll, sample->sample_seq_no);
+        sample_time = TIME_DELTA_TO_NANOS(start_time, sample->sample_time);
+
+        mvprintw(0,0,"SAMPLE @ %6lld.%03llds  SEQ:%d\n", sample_time / 1000000000ll, (sample->sample_time % 1000000000ll) / 1000000ll, sample->sample_seq_no);
 
         n = 1;
         maxy = getmaxy(stdscr);
@@ -132,7 +137,8 @@ int main(int argc, char **argv)
         prev_sample = sample;
         sample = tmp;
 
-        msleep(1000);
+        now = current_time();
+        nsleep(1000000000ll - TIME_DELTA_TO_NANOS(prev_sample->sample_time,now));
     }
 
     close_screen();

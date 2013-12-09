@@ -6,24 +6,67 @@
 #include <assert.h>
 #include <time.h>
 #include <sys/time.h>
+#include <unistd.h>
+
+#ifdef DARWIN
+#include <mach/mach_time.h>
+#endif
 
 #include "stats/error.h"
 #include "stats/stats.h"
 #include "stats/hash.h"
 #include "stats/debug.h"
 
+
 static void stats_init_data(struct stats *stats);
 static int stats_hash_probe(struct stats_data *data, const char *key, int len);
 
 
+#ifdef DARWIN
+static mach_timebase_info_data_t  timebase_info = {0,0};
+#endif
+
+#ifdef LINUX
 long long current_time()
 {
-    struct timeval tv;
+    struct timespec ts;
 
-    gettimeofday(&tv,NULL);
+    clock_gettime(CLOCK_MONOTONIC,&ts);
 
-    return (long long)tv.tv_sec * 1000000ll + (long long)tv.tv_usec;
+    return (long long)ts.tv_sec * 1000000000ll + (long long)ts.tv_nsec;
 }
+
+long long time_delta_to_nanos(long long start, long long end)
+{
+    return start - end;
+}
+#endif
+
+#ifdef DARWIN
+long long current_time()
+{
+    return mach_absolute_time();
+}
+
+long long time_delta_to_nanos(long long start, long long end)
+{
+    long long elapsed, elapsed_nano;
+
+    elapsed = end - start;
+
+    if (timebase_info.denom == 0)
+    {
+        mach_timebase_info(&timebase_info);
+    }
+
+    // Do the maths. We hope that the multiplication doesn't
+    // overflow; the price you pay for working in fixed point.
+
+    elapsed_nano = elapsed * timebase_info.numer / timebase_info.denom;
+
+    return elapsed_nano;
+}
+#endif
 
 /*
  * stats_create

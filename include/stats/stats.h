@@ -11,8 +11,21 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif
 
+/* gets the current time as an absolute time */
 long long current_time();
 
+/* converts two absolute time to a difference in nanoseconds */
+long long time_delta_to_nanos(long long start, long long end);
+
+/* instead of using the above function, which may be a no-op, use the macro */
+#ifdef DARWIN
+#define TIME_DELTA_TO_NANOS(start,end) time_delta_to_nanos(start,end)
+#endif
+#ifdef LINUX
+#define TIME_DELTA_TO_NANOS(start,end) (end-start)
+#endif
+
+#define STATS_MAX_NAME_LEN (SHARED_MEMORY_MAX_NAME_LEN - 4)
 
 #define STATS_MAGIC   'stat'
 

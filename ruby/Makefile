@@ -18,3 +18,6 @@ copy-lib-files:
 
 test:
 	ruby ./test/test_stats.rb
+
+benchmark:
+	ruby ./test/benchmark_stats.rb

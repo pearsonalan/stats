@@ -75,11 +75,66 @@ static int hash_probe(struct rbstats *stats, const char *key, long len)
     return -1;
 }
 
+/* this simple table keeps track of stats objects so that multiple calls to
+ *   Stats.new('foo')
+ * will return a rbstats object which wraps the same base stats object.
+ */
+
+struct open_stats_objects {
+    char name[STATS_MAX_NAME_LEN + 1];
+    int open_count;
+    struct stats *stats;
+};
+
+#define OPEN_STATS_OBJECTS 8
+
+struct open_stats_objects open_stats_object_table[OPEN_STATS_OBJECTS];
+int open_stats_object_table_initialized = 0;
+
 
 static struct stats *open_stats(const char * name)
 {
     struct stats *stats = NULL;
     int err;
+    int i;
+
+    if (strlen(name) > STATS_MAX_NAME_LEN)
+    {
+        printf("Stats name is too long\n");
+        return NULL;
+    }
+
+    if (open_stats_object_table_initialized == 0)
+    {
+        memset(open_stats_object_table, 0, sizeof(open_stats_object_table));
+        open_stats_object_table_initialized = 1;
+    }
+
+    for (i = 0; i < OPEN_STATS_OBJECTS; i++ )
+    {
+        if (*open_stats_object_table[i].name == 0)
+            break;
+        if (strcmp(name,open_stats_object_table[i].name) == 0)
+        {
+            if (open_stats_object_table[i].stats == NULL)
+            {
+                /* there is an entry at location i, but it is not open */
+                break;
+            }
+            else
+            {
+                open_stats_object_table[i].open_count++;
+                return open_stats_object_table[i].stats;
+            }
+        }
+    }
+
+    /* see if the table is all full */
+    if (i == OPEN_STATS_OBJECTS)
+    {
+        printf("Failed to create stats: stats table is full\n");
+        return NULL;
+    }
 
     err = stats_create(name,&stats);
     if (err != S_OK)
@@ -96,6 +151,10 @@ static struct stats *open_stats(const char * name)
         return NULL;
     }
 
+    strcpy(open_stats_object_table[i].name, name);
+    open_stats_object_table[i].open_count++;
+    open_stats_object_table[i].stats = stats;
+
     return stats;
 }
 
@@ -110,12 +169,25 @@ static struct stats *open_stats(const char * name)
 static void rbstats_free(void *p)
 {
     struct rbstats *s;
+    int i;
 
     s = (struct rbstats *)p;
     if (s && s->stats)
     {
-        stats_close(s->stats);
-        stats_free(s->stats);
+        /* look for the object in the open table and decrement the open count */
+        for (i = 0; i < OPEN_STATS_OBJECTS; i++ )
+        {
+            if (open_stats_object_table[i].stats == s->stats)
+            {
+                open_stats_object_table[i].open_count--;
+                if (open_stats_object_table[i].open_count == 0)
+                {
+                    open_stats_object_table[i].stats = NULL;
+                    stats_close(s->stats);
+                    stats_free(s->stats);
+                }
+            }
+        }
     }
 
     free(p);
@@ -404,7 +476,7 @@ static VALUE rbtmr_alloc(struct stats_counter *counter)
 
     td = (struct timer_data *)malloc(sizeof(struct timer_data));
     td->counter = counter;
-    td->start_time = current_time();
+    td->start_time = 0;
 
     tdata = Data_Wrap_Struct(tmr_class, 0, rbtmr_free, td);
 
@@ -416,7 +488,8 @@ VALUE rbtmr_enter(VALUE self)
     struct timer_data *td;
 
     Data_Get_Struct(self, struct timer_data, td);
-    td->start_time = current_time();
+    if (td->start_time == 0)
+        td->start_time = current_time();
 
     return self;
 }
@@ -426,9 +499,24 @@ VALUE rbtmr_exit(VALUE self)
     struct timer_data *td;
 
     Data_Get_Struct(self, struct timer_data, td);
-    counter_increment_by(td->counter,current_time() - td->start_time);
+    counter_increment_by(td->counter,TIME_DELTA_TO_NANOS(td->start_time,current_time()) / 1000ll);
+    td->start_time = 0;
     return self;
 }
+
+VALUE rbtmr_time(VALUE self)
+{
+    struct timer_data *td;
+    long long start_time;
+    VALUE ret;
+
+    Data_Get_Struct(self, struct timer_data, td);
+    start_time = current_time();
+    ret = rb_yield(self);
+    counter_increment_by(td->counter,TIME_DELTA_TO_NANOS(start_time,current_time()) / 1000ll);
+    return ret;
+}
+
 
 static void rbtmr_free(void *p)
 {
@@ -456,4 +544,6 @@ void Init_stats()
     tmr_class = rb_define_class("Timer", rb_cObject);
     rb_define_method(tmr_class, "enter", rbtmr_enter, 0);
     rb_define_method(tmr_class, "exit", rbtmr_exit, 0);
+    rb_define_method(tmr_class, "time", rbtmr_time, 0);
 }
+

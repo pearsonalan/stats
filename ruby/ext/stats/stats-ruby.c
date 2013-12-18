@@ -467,6 +467,7 @@ struct timer_data
 {
     struct stats_counter *counter;
     long long start_time;
+    int depth;
 };
 
 static VALUE rbtmr_alloc(struct stats_counter *counter)
@@ -477,6 +478,7 @@ static VALUE rbtmr_alloc(struct stats_counter *counter)
     td = (struct timer_data *)malloc(sizeof(struct timer_data));
     td->counter = counter;
     td->start_time = 0;
+    td->depth = 0;
 
     tdata = Data_Wrap_Struct(tmr_class, 0, rbtmr_free, td);
 
@@ -490,6 +492,7 @@ VALUE rbtmr_enter(VALUE self)
     Data_Get_Struct(self, struct timer_data, td);
     if (td->start_time == 0)
         td->start_time = current_time();
+    td->depth++;
 
     return self;
 }
@@ -499,8 +502,13 @@ VALUE rbtmr_exit(VALUE self)
     struct timer_data *td;
 
     Data_Get_Struct(self, struct timer_data, td);
-    counter_increment_by(td->counter,TIME_DELTA_TO_NANOS(td->start_time,current_time()) / 1000ll);
-    td->start_time = 0;
+    if (td->depth > 0)
+        td->depth--;
+    if (td->start_time > 0 && td->depth == 0)
+    {
+        counter_increment_by(td->counter,TIME_DELTA_TO_NANOS(td->start_time,current_time()) / 1000ll);
+        td->start_time = 0;
+    }
     return self;
 }
 

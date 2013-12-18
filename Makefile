@@ -77,6 +77,10 @@ endif
 
 LIBFLAGS =        -Lobj -lstats
 
+ifeq ($(OSTYPE),Linux)
+  LIBFLAGS += -lrt
+endif
+
 $(STATSLIB): $(LIB_OBJS)
 	ar -r $@ $(LIB_OBJS)
 

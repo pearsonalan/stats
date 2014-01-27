@@ -358,6 +358,31 @@ static int stats_hash_probe(struct stats_data *data, const char *key, int len)
     return -1;
 }
 
+int stats_reset_counters(struct stats *stats)
+{
+    int i;
+    struct stats_data *data;
+
+    if (!stats || stats->magic != STATS_MAGIC || stats->data == NULL)
+        return ERROR_INVALID_PARAMETERS;
+
+    data = stats->data;
+
+    lock_acquire(&stats->lock);
+
+    for (i = 0; i < COUNTER_TABLE_SIZE; i++)
+    {
+        if (data->ctr[i].ctr_allocation_status == ALLOCATION_STATUS_ALLOCATED)
+        {
+            __sync_lock_test_and_set(&data->ctr[i].ctr_value.val64,0ll);
+        }
+    }
+
+    lock_release(&stats->lock);
+
+    return S_OK;
+}
+
 int stats_get_counter_list(struct stats *stats, struct stats_counter_list *cl)
 {
     int err = S_OK;

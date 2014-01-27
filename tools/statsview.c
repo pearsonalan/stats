@@ -15,16 +15,6 @@
 
 int signal_received = 0;
 
-static unsigned long long nsleep(unsigned long long nsec)
-{
-    struct timespec t;
-    t.tv_sec= nsec/1000000000ll;
-    t.tv_nsec= nsec%1000000000ll;
-    if (nanosleep(&t,&t) != -1)
-        return nsec;
-    return nsec - ((unsigned long long)t.tv_sec*1000000000ll + t.tv_nsec);
-}
-
 static void sigfunc(int sig_no)
 {
     signal_received = 1;
@@ -60,8 +50,10 @@ int main(int argc, char **argv)
     struct stats_sample *sample = NULL, *prev_sample = NULL, *tmp = NULL;
     struct sigaction sa;
     char counter_name[MAX_COUNTER_KEY_LENGTH+1];
-    int j, err, n, maxy, col;
+    int j, err, n, maxy, col, ret, ch;
+    struct timeval tv;
     long long start_time, sample_time, now;
+    fd_set fds;
 
     if (argc != 2)
     {
@@ -137,8 +129,23 @@ int main(int argc, char **argv)
         prev_sample = sample;
         sample = tmp;
 
+        FD_ZERO(&fds);
+        FD_SET(0,&fds);
+
         now = current_time();
-        nsleep(1000000000ll - TIME_DELTA_TO_NANOS(prev_sample->sample_time,now));
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 1000000 - (now % 1000000000) / 1000;
+
+        ret = select(1, &fds, NULL, NULL, &tv);
+        if (ret == 1)
+        {
+            ch = getch();
+            if (ch == 'c' || ch == 'C')
+            {
+                stats_reset_counters(stats);
+            }
+        }
     }
 
     close_screen();

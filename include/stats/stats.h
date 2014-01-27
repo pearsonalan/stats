@@ -147,6 +147,9 @@ int stats_free(struct stats *stats);
 
 int stats_allocate_counter(struct stats *stats, const char *name, struct stats_counter **ctr_out);
 
+/* clear all of the counters in the structure to 0 */
+int stats_reset_counters(struct stats *stats);
+
 /* deprecated. use stats_counter_list instead */
 int stats_get_counters(struct stats *stats, struct stats_counter **counters, int counter_size, int *counter_out, int *sequence_number_out);
 

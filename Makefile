@@ -21,11 +21,12 @@ SEM_TEST_OBJS =		$(OBJDIR)/sem_test.o
 LOCK_TEST_OBJS =	$(OBJDIR)/lock_test.o
 KEYSTATS_OBJS = 	$(OBJDIR)/keystats.o $(OBJDIR)/screenutil.o
 STATSVIEW_OBJS = 	$(OBJDIR)/statsview.o $(OBJDIR)/screenutil.o
+STATSRV_OBJS = 		$(OBJDIR)/statsrv.o
 HISTD_OBJS =		$(OBJDIR)/histd.o $(OBJDIR)/http.o
 HISTD_CLIENT_OBJS =	$(OBJDIR)/histd_client.o
 
 TESTS = 		$(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/stats_test
-TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/keystats $(BINDIR)/histd_client
+TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/statsrv $(BINDIR)/keystats $(BINDIR)/histd_client
 DAEMONS =		$(BINDIR)/histd
 
 ifeq ($(INSTALLDIR),)
@@ -53,7 +54,7 @@ install: build
 rubyext:
 	cd ruby && make
 
-INCLUDES=include ext util
+INCLUDES=include ext util $(INSTALLDIR)/include
 INCLUDEFLAGS=$(foreach dir,$(INCLUDES),-I $(dir))
 
 ifeq ($(DEBUG),1)
@@ -104,6 +105,9 @@ $(BINDIR)/statsview: $(STATSVIEW_OBJS) $(STATSLIB)
 
 $(BINDIR)/keystats: $(KEYSTATS_OBJS) $(STATSLIB)
 	$(CC) $(LINKFLAGS) -o $@ $(KEYSTATS_OBJS) $(LIBFLAGS) -lcurses
+
+$(BINDIR)/statsrv: $(STATSRV_OBJS) $(STATSLIB)
+	$(CC) $(LINKFLAGS) -o $@ $(STATSRV_OBJS) $(LIBFLAGS) -levent
 
 $(BINDIR)/histd: $(HISTD_OBJS)
 	$(CC) $(LINKFLAGS) -o $@ $(HISTD_OBJS) $(LIBFLAGS) -levent

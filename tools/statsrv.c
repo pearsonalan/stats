@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
+#include <signal.h>
 
 #include <event2/event.h>
 #include <event2/buffer.h>

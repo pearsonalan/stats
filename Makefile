@@ -76,7 +76,7 @@ ifeq ($(OSTYPE),Linux)
   LINKFLAGS += -fPIC
 endif
 
-LIBFLAGS =        -Lobj -lstats
+LIBFLAGS =        -Lobj -L$(INSTALLDIR)/lib -lstats
 
 ifeq ($(OSTYPE),Linux)
   LIBFLAGS += -lrt

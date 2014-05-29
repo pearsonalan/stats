@@ -352,7 +352,11 @@ int http_init(struct http* http, struct event_base *base, struct metrics *metric
     http->port = 4000;
 
     /* TODO: read docroot from config file */
-    getcwd(workdir,sizeof(workdir));
+    if (getcwd(workdir,sizeof(workdir)) == NULL)
+    {
+        printf("Could not get working directory\n");
+        return ERROR_FAIL;
+    }
     snprintf(docroot, sizeof(docroot), "%s/docroot", workdir);
     http->docroot = strdup(docroot);
 

@@ -97,7 +97,7 @@ int main(int argc, char **argv)
             {
                 sprintf(counter_name,"%c.char",c-'A'+'a');
                 stats_allocate_counter(stats,counter_name,&key_counter);
-                key_counters[c-'A'+'a'] = key_counter;
+                key_counters[c-'A'] = key_counter;
             }
         }
 

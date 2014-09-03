@@ -50,6 +50,8 @@ install: build
 	/bin/cp ext/*.h $(INSTALLDIR)/include/
 	mkdir -p $(INSTALLDIR)/lib
 	/usr/bin/install $(STATSLIB) $(INSTALLDIR)/lib
+	/usr/bin/install $(BINDIR)/statsview $(INSTALLDIR)/bin
+	/usr/bin/install $(BINDIR)/statsrv $(INSTALLDIR)/bin
 
 rubyext:
 	cd ruby && make

@@ -29,8 +29,12 @@ TESTS = 		$(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/
 TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/statsrv $(BINDIR)/keystats $(BINDIR)/histd_client
 DAEMONS =		$(BINDIR)/histd
 
+ifeq ($(PREFIX),)
+  PREFIX = 		/usr/local
+endif
+
 ifeq ($(INSTALLDIR),)
-  INSTALLDIR = 		/usr/local
+  INSTALLDIR = 		$(DESTDIR)$(PREFIX)
 endif
 
 .PHONY: rubyext all build install

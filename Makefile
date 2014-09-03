@@ -54,6 +54,7 @@ install: build
 	/bin/cp ext/*.h $(INSTALLDIR)/include/
 	mkdir -p $(INSTALLDIR)/lib
 	/usr/bin/install $(STATSLIB) $(INSTALLDIR)/lib
+	mkdir -p $(INSTALLDIR)/bin
 	/usr/bin/install $(BINDIR)/statsview $(INSTALLDIR)/bin
 	/usr/bin/install $(BINDIR)/statsrv $(INSTALLDIR)/bin
 

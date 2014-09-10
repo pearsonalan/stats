@@ -439,6 +439,16 @@ VALUE rbctr_clr(VALUE self)
     return self;
 }
 
+VALUE rbctr_get(VALUE self)
+{
+    struct stats_counter *counter = NULL;
+    long long val;
+
+    Data_Get_Struct(self, struct stats_counter, counter);
+    val = counter_get_value(counter);
+    return LONG2FIX(val);
+}
+
 VALUE rbctr_set(VALUE self, VALUE amt)
 {
     struct stats_counter *counter = NULL;
@@ -548,6 +558,7 @@ void Init_stats()
     rb_define_method(ctr_class, "add", rbctr_add, 1);
     rb_define_method(ctr_class, "set", rbctr_set, 1);
     rb_define_method(ctr_class, "clr", rbctr_clr, 0);
+    rb_define_method(ctr_class, "get", rbctr_get, 0);
 
     tmr_class = rb_define_class("Timer", rb_cObject);
     rb_define_method(tmr_class, "enter", rbtmr_enter, 0);

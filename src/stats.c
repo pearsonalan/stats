@@ -572,6 +572,18 @@ void counter_increment(struct stats_counter *ctr)
     }
 }
 
+long long counter_get_value(struct stats_counter *ctr)
+{
+    if (ctr != NULL)
+    {
+        return __sync_fetch_and_add(&ctr->ctr_value.val64,0);
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 void counter_increment_by(struct stats_counter *ctr, long long val)
 {
     if (ctr != NULL)

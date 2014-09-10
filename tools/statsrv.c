@@ -1,5 +1,9 @@
 /* statsrv.c */
 
+/*
+ * An HTTP server that allows clients to receive a sample of stats data
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -17,6 +21,15 @@
 #include "stats/stats.h"
 #include "stats/error.h"
 
+struct context
+{
+    struct event_base *base;
+    struct evhttp *http;
+    struct stats *stats;
+    struct stats_counter_list *cl;
+    struct stats_sample *sample;
+    struct stats_sample *prev_sample;
+};
 
 static struct stats *open_stats(const char *name)
 {
@@ -44,13 +57,56 @@ static struct stats *open_stats(const char *name)
 
 static void sigint_cb(evutil_socket_t fd, short event, void *arg)
 {
-    struct event *signal = arg;
+    struct event *signal = (struct event *)arg;
     printf("Terminating on SIGINT\n");
     event_base_loopbreak(event_get_base(signal));
 }
 
+
+static int get_sample(struct context *ctx)
+{
+    int err;
+
+    err = stats_get_sample(ctx->stats, ctx->cl, ctx->sample);
+    if (err != S_OK)
+    {
+        printf("Error %08x (%s) getting sample\n",err,error_message(err));
+        return 1;
+    }
+
+    return 0;
+}
+
+
+static int format_sample_response(struct context *ctx, struct evbuffer *evb)
+{
+    int i;
+    char counter_name[MAX_COUNTER_KEY_LENGTH+1];
+
+    evbuffer_add_printf(evb, "{\"status\":\"ok\",\"sample_time\":%lld,\"sample\":{",
+        ctx->sample->sample_time);
+    for (i = 0; i < ctx->cl->cl_count; i++)
+    {
+        counter_get_key(ctx->cl->cl_ctr[i],counter_name,MAX_COUNTER_KEY_LENGTH+1);
+        if (i > 0)
+            evbuffer_add_printf(evb, ",");
+        evbuffer_add_printf(evb,"\"%s\":%lld", counter_name, stats_sample_get_value(ctx->sample,i));
+    }
+    evbuffer_add_printf(evb, "}}");
+    return 0;
+}
+
+static void internal_error(struct evhttp_request *req, struct evbuffer *evb)
+{
+    evbuffer_add_printf(evb, "{\"status\":\"failed\"}");
+    evhttp_add_header(evhttp_request_get_output_headers(req), "Content-Type", "application/json");
+    evhttp_send_reply(req, 500, "Internal Error", evb);
+    printf(" - 500 - error\n");
+}
+
 static void http_request_cb(struct evhttp_request *req, void *arg)
 {
+    struct context *ctx = (struct context *) arg;
     const char *uri = evhttp_request_get_uri(req);
     struct evbuffer *evb = NULL;
     const char *type;
@@ -61,7 +117,7 @@ static void http_request_cb(struct evhttp_request *req, void *arg)
         return;
     }
 
-    printf("GET: %s\n",  uri);
+    printf("GET: %s",  uri);
 
     if (strcmp(uri,"/") == 0)
     {
@@ -71,6 +127,27 @@ static void http_request_cb(struct evhttp_request *req, void *arg)
         evhttp_add_header(evhttp_request_get_output_headers(req), "Content-Type", type);
         evhttp_send_reply(req, 200, "OK", evb);
         printf(" - 200 - ok\n");
+    }
+    else if (strcmp(uri,"/sample") == 0)
+    {
+        evb = evbuffer_new();
+        if (get_sample(ctx) == 0)
+        {
+            if (format_sample_response(ctx, evb) == 0)
+            {
+                evhttp_add_header(evhttp_request_get_output_headers(req), "Content-Type", "application/json");
+                evhttp_send_reply(req, 200, "OK", evb);
+                printf(" - 200 - ok\n");
+            }
+            else
+            {
+                internal_error(req, evb);
+            }
+        }
+        else
+        {
+            internal_error(req, evb);
+        }
     }
     else
     {
@@ -137,11 +214,7 @@ static int http_get_address(struct evhttp_bound_socket *handle, char *buffer, in
 
 int main(int argc, char **argv)
 {
-    struct event_base *base = NULL;
-    struct stats *stats = NULL;
-    struct stats_counter_list *cl = NULL;
-    struct stats_sample *sample = NULL, *prev_sample = NULL;
-    struct evhttp *http = NULL;
+    struct context ctx = {0};
     struct event *signal_int;
     struct evhttp_bound_socket *handle;
     char listen_addr[256];
@@ -152,54 +225,54 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    if (stats_cl_create(&cl) != S_OK)
+    if (stats_cl_create(&ctx.cl) != S_OK)
     {
         printf("Failed to allocate stats counter list\n");
         return ERROR_FAIL;
     }
 
-    if (stats_sample_create(&sample) != S_OK)
+    if (stats_sample_create(&ctx.sample) != S_OK)
     {
         printf("Failed to allocate stats sample\n");
         return ERROR_FAIL;
     }
 
-    if (stats_sample_create(&prev_sample) != S_OK)
+    if (stats_sample_create(&ctx.prev_sample) != S_OK)
     {
         printf("Failed to allocate stats sample\n");
         return ERROR_FAIL;
     }
 
-    stats = open_stats(argv[1]);
-    if (!stats)
+    ctx.stats = open_stats(argv[1]);
+    if (!ctx.stats)
     {
         printf("Failed to open stats %s\n", argv[1]);
         return ERROR_FAIL;
     }
 
-    base = event_base_new();
-    if (!base)
+    ctx.base = event_base_new();
+    if (!ctx.base)
     {
         printf("Could not allocate event base\n");
         return 1;
     }
 
     /* add a handler for SIGINT */
-    signal_int = evsignal_new(base, SIGINT, sigint_cb, event_self_cbarg());
+    signal_int = evsignal_new(ctx.base, SIGINT, sigint_cb, event_self_cbarg());
     evsignal_add(signal_int,0);
 
     /* Create a new evhttp object to handle requests. */
-    http = evhttp_new(base);
-    if (!http)
+    ctx.http = evhttp_new(ctx.base);
+    if (!ctx.http)
     {
         printf("could not create evhttp.\n");
         return ERROR_FAIL;
     }
 
-    evhttp_set_gencb(http, http_request_cb, http);
+    evhttp_set_gencb(ctx.http, http_request_cb, &ctx);
 
     /* Now we tell the evhttp what port to listen on */
-    handle = evhttp_bind_socket_with_handle(http, "0.0.0.0", 8080);
+    handle = evhttp_bind_socket_with_handle(ctx.http, "0.0.0.0", 8080);
     if (!handle)
     {
         printf("couldn't bind to http port %d.\n", (int)8080);
@@ -209,7 +282,7 @@ int main(int argc, char **argv)
     if (http_get_address(handle, listen_addr, sizeof(listen_addr)) == S_OK)
         printf("http: listening at %s\n", listen_addr);
 
-    event_base_dispatch(base);
+    event_base_dispatch(ctx.base);
 
     event_free(signal_int);
 
@@ -273,26 +346,26 @@ int main(int argc, char **argv)
     close_screen();
 #endif
 
-    if (base)
-        event_base_free(base);
+    if (ctx.base)
+        event_base_free(ctx.base);
 
-    if (http)
-        evhttp_free(http);
+    if (ctx.http)
+        evhttp_free(ctx.http);
 
-    if (stats)
+    if (ctx.stats)
     {
-        stats_close(stats);
-        stats_free(stats);
+        stats_close(ctx.stats);
+        stats_free(ctx.stats);
     }
 
-    if (cl)
-        stats_cl_free(cl);
+    if (ctx.cl)
+        stats_cl_free(ctx.cl);
 
-    if (sample)
-        stats_sample_free(sample);
+    if (ctx.sample)
+        stats_sample_free(ctx.sample);
 
-    if (prev_sample)
-        stats_sample_free(prev_sample);
+    if (ctx.prev_sample)
+        stats_sample_free(ctx.prev_sample);
 
     return 0;
 }

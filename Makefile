@@ -26,7 +26,7 @@ HISTD_OBJS =		$(OBJDIR)/histd.o $(OBJDIR)/http.o
 HISTD_CLIENT_OBJS =	$(OBJDIR)/histd_client.o
 
 TESTS = 		$(BINDIR)/shmem_test $(BINDIR)/sem_test $(BINDIR)/lock_test $(BINDIR)/stats_test
-TOOLS =			$(BINDIR)/find_prime $(BINDIR)/statsview $(BINDIR)/statsrv $(BINDIR)/keystats $(BINDIR)/histd_client
+TOOLS =			$(BINDIR)/statsview $(BINDIR)/statsrv $(BINDIR)/keystats $(BINDIR)/histd_client
 DAEMONS =		$(BINDIR)/histd
 
 ifeq ($(PREFIX),)
@@ -103,9 +103,6 @@ $(BINDIR)/sem_test: $(SEM_TEST_OBJS) $(STATSLIB)
 
 $(BINDIR)/lock_test: $(LOCK_TEST_OBJS) $(STATSLIB)
 	$(CC) $(LINKFLAGS) -o $@ $(LOCK_TEST_OBJS) $(LIBFLAGS)
-
-$(BINDIR)/find_prime: $(OBJDIR)/find_prime.o
-	$(CC) $(LINKFLAGS) -o $@ $(OBJDIR)/find_prime.o $(LIBFLAGS)
 
 $(BINDIR)/statsview: $(STATSVIEW_OBJS) $(STATSLIB)
 	$(CC) $(LINKFLAGS) -o $@ $(STATSVIEW_OBJS) $(LIBFLAGS) -lcurses

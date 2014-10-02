@@ -6,6 +6,7 @@ $(info gem version is $(GEMVERSION))
 all: build test
 
 build: copy-lib-files
+	-gem uninstall fast-stats -v $(GEMVERSION)
 	gem build fast-stats.gemspec
 	gem install fast-stats-$(GEMVERSION).gem
 

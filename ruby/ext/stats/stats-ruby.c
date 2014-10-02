@@ -10,6 +10,7 @@
 static VALUE stats_class = Qnil;
 static VALUE ctr_class = Qnil;
 static VALUE tmr_class = Qnil;
+static VALUE sample_class = Qnil;
 
 #define STATS_MAGIC  'stat'
 #define CTR_MAGIC    'ctr '
@@ -36,6 +37,9 @@ static void rbctr_free(void *p);
 
 static VALUE rbtmr_alloc(struct stats_counter *counter);
 static void rbtmr_free(void *p);
+
+static VALUE rbsample_alloc(struct stats_counter_list *cl, struct stats_sample *sample);
+static void rbsample_free(void *p);
 
 
 static int hash_probe(struct rbstats *stats, const char *key, long len)
@@ -395,6 +399,52 @@ static VALUE rbstats_clr(VALUE self, VALUE rbkey)
 }
 
 
+static VALUE rbstats_sample(VALUE self)
+{
+    struct rbstats *stats;
+    struct stats_counter_list *cl = NULL;
+    struct stats_sample *sample = NULL;
+    VALUE ret = Qnil;
+
+    stats = rbstats_get_wrapped_stats(self);
+    if (!stats)
+        goto exit;
+
+    if (stats_cl_create(&cl) != S_OK)
+        goto exit;
+
+    if (stats_get_counter_list(stats->stats, cl) != S_OK)
+        goto exit;
+
+    if (stats_sample_create(&sample) != S_OK)
+        goto exit;
+
+    if (stats_get_sample(stats->stats, cl, sample) != S_OK)
+        goto exit;
+
+    ret = rbsample_alloc(cl, sample);
+    if (ret != Qnil)
+    {
+        cl = NULL;
+        sample = NULL;
+    }
+
+exit:
+    if (cl != NULL)
+    {
+        stats_cl_free(cl);
+    }
+
+    if (sample != NULL)
+    {
+        stats_sample_free(sample);
+    }
+
+    return ret;
+}
+
+
+
 /******************************************************************
  *
  *  Ruby Counter
@@ -482,15 +532,18 @@ struct timer_data
 
 static VALUE rbtmr_alloc(struct stats_counter *counter)
 {
-    VALUE tdata;
+    VALUE tdata = Qnil;
     struct timer_data *td;
 
     td = (struct timer_data *)malloc(sizeof(struct timer_data));
-    td->counter = counter;
-    td->start_time = 0;
-    td->depth = 0;
+    if (td)
+    {
+        td->counter = counter;
+        td->start_time = 0;
+        td->depth = 0;
 
-    tdata = Data_Wrap_Struct(tmr_class, 0, rbtmr_free, td);
+        tdata = Data_Wrap_Struct(tmr_class, 0, rbtmr_free, td);
+    }
 
     return tdata;
 }
@@ -541,11 +594,144 @@ static void rbtmr_free(void *p)
     free(p);
 }
 
+
+/******************************************************************
+ *
+ *  Ruby Sample
+ *
+ */
+
+struct rb_sample_data
+{
+    struct stats_counter_list *cl;
+    struct stats_sample *sample;
+};
+
+
+static VALUE rbsample_alloc(struct stats_counter_list *cl, struct stats_sample *sample)
+{
+    VALUE tdata = Qnil;
+    struct rb_sample_data *sd;
+
+    sd = (struct rb_sample_data *) malloc(sizeof(struct rb_sample_data));
+    if (sd)
+    {
+        sd->cl = cl;
+        sd->sample = sample;
+        tdata = Data_Wrap_Struct(sample_class, 0, rbsample_free, sd);
+    }
+
+    return tdata;
+}
+
+static void rbsample_free(void *p)
+{
+    struct rb_sample_data *d = (struct rb_sample_data *)p;
+    stats_cl_free(d->cl);
+    stats_sample_free(d->sample);
+    free(d);
+}
+
+static VALUE rbsample_keys(VALUE self)
+{
+    struct rb_sample_data *sd = NULL;
+    VALUE keys;
+    int i;
+    char counter_name[MAX_COUNTER_KEY_LENGTH+1];
+
+    Data_Get_Struct(self, struct rb_sample_data, sd);
+
+    keys = rb_ary_new();
+    if (keys != Qnil)
+    {
+        for (i = 0; i < sd->cl->cl_count; i++)
+        {
+            counter_get_key(sd->cl->cl_ctr[i],counter_name,MAX_COUNTER_KEY_LENGTH+1);
+            rb_ary_push(keys, rb_str_new_cstr(counter_name));
+        }
+    }
+
+    return keys;
+}
+
+static VALUE rbsample_time(VALUE self)
+{
+    struct rb_sample_data *sd = NULL;
+
+    Data_Get_Struct(self, struct rb_sample_data, sd);
+
+    return LONG2FIX(sd->sample->sample_time);
+}
+
+static VALUE rbsample_count(VALUE self)
+{
+    struct rb_sample_data *sd = NULL;
+
+    Data_Get_Struct(self, struct rb_sample_data, sd);
+
+    return LONG2FIX(sd->cl->cl_count);
+}
+
+static VALUE rbsample_get(VALUE self, VALUE key_arg)
+{
+    struct rb_sample_data *sd = NULL;
+    int i;
+    char counter_name[MAX_COUNTER_KEY_LENGTH+1], *key;
+    long long val;
+
+    Check_Type(key_arg,T_STRING);
+
+    Data_Get_Struct(self, struct rb_sample_data, sd);
+    key = StringValueCStr(key_arg);
+
+    for (i = 0; i < sd->cl->cl_count; i++)
+    {
+        counter_get_key(sd->cl->cl_ctr[i],counter_name,MAX_COUNTER_KEY_LENGTH+1);
+        if (strcmp(key, counter_name) == 0)
+        {
+            val = stats_sample_get_value(sd->sample, i);
+            return LONG2FIX(val);
+        }
+    }
+
+    return Qnil;
+}
+
+static VALUE rbsample_each(VALUE self)
+{
+    struct rb_sample_data *sd = NULL;
+    int i;
+    char counter_name[MAX_COUNTER_KEY_LENGTH+1];
+    long long val;
+    VALUE key;
+
+    Data_Get_Struct(self, struct rb_sample_data, sd);
+
+    for (i = 0; i < sd->cl->cl_count; i++)
+    {
+        counter_get_key(sd->cl->cl_ctr[i],counter_name,MAX_COUNTER_KEY_LENGTH+1);
+        key = rb_str_new_cstr(counter_name);
+        val = stats_sample_get_value(sd->sample, i);
+        rb_yield_values(2, key, LONG2FIX(val));
+    }
+
+    return self;
+}
+
+
+
+/******************************************************************
+ *
+ *  Module initialization
+ *
+ */
+
 void Init_stats()
 {
     stats_class = rb_define_class("Stats", rb_cObject);
     rb_define_singleton_method(stats_class, "new", rbstats_new, 1);
     rb_define_method(stats_class, "initialize", rbstats_init, 1);
+    rb_define_method(stats_class, "sample", rbstats_sample, 0);
     rb_define_method(stats_class, "get", rbstats_get, 1);
     rb_define_method(stats_class, "timer", rbstats_get_tmr, 1);
     rb_define_method(stats_class, "inc", rbstats_inc, 1);
@@ -564,5 +750,12 @@ void Init_stats()
     rb_define_method(tmr_class, "enter", rbtmr_enter, 0);
     rb_define_method(tmr_class, "exit", rbtmr_exit, 0);
     rb_define_method(tmr_class, "time", rbtmr_time, 0);
+
+    sample_class = rb_define_class("Sample", rb_cObject);
+    rb_define_method(sample_class, "keys", rbsample_keys, 0);
+    rb_define_method(sample_class, "time", rbsample_time, 0);
+    rb_define_method(sample_class, "count", rbsample_count, 0);
+    rb_define_method(sample_class, "each", rbsample_each, 0);
+    rb_define_method(sample_class, "[]", rbsample_get, 1);
 }
 
